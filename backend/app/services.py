@@ -8,6 +8,7 @@ what the running deployment can actually reach.
 import os
 
 SERVICES = {
+    "database": "DATABASE_URL",
     "redis-queue": "REDIS_URL",
 }
 

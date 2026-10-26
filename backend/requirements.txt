@@ -15,5 +15,9 @@ pytest-cov>=5.0
 ruff>=0.6
 
 # BEGIN QUORQ ARCHITECTURE PACKAGES
+celery>=5.3
+passlib>=1.7.4
+PyJWT>=2.8.0
 redis>=5.0
+sendgrid>=6.11
 # END QUORQ ARCHITECTURE PACKAGES

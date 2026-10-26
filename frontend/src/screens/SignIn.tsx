@@ -58,8 +58,11 @@ export default function Screen() {
     setFieldError(next);
     if (next.email || next.password) {
       setStatus("idle");
-      if (next.email) emailRef.current && emailRef.current.focus();
-      else passwordRef.current && passwordRef.current.focus();
+      if (next.email) {
+        if (emailRef.current) emailRef.current.focus();
+      } else if (passwordRef.current) {
+        passwordRef.current.focus();
+      }
       return;
     }
     setStatus("checking");

@@ -12,9 +12,6 @@ const { Button, Input, Textarea, Label, Empty } = UI;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { Plus, Search, X, ChevronRight, Clock, AlertCircle, CheckCircle } = Icons;
 
-const { Button, Input, Textarea, Label, Empty } = UI;
-const { Plus, Search, X, ChevronRight, AlertCircle, CheckCircle, Clock } = Icons;
-
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const INITIAL_PROJECTS = [
