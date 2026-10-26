@@ -39,9 +39,7 @@ test("[AC-002] wrong credentials show the invalid-credentials error and the user
   await page.getByLabel("Password").fill("definitely-not-the-password");
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  await expect(
-    page.getByText(/those credentials are invalid/i),
-  ).toBeVisible();
+  await expect(page.getByText(/those credentials are invalid/i)).toBeVisible();
   await expect(page).toHaveURL(/\/sign-in$/);
 });
 

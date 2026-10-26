@@ -57,7 +57,11 @@ describe("SignIn", () => {
     });
 
     await waitFor(() => expect(getToken()).toBe("jwt-abc"));
-    expect(getUser()).toEqual({ id: "u1", email: "rhea.okafor@meridian.works", name: "Rhea Okafor" });
+    expect(getUser()).toEqual({
+      id: "u1",
+      email: "rhea.okafor@meridian.works",
+      name: "Rhea Okafor",
+    });
 
     await vi.advanceTimersByTimeAsync(700);
     await waitFor(() => expect(screen.getByText("Projects overview")).toBeInTheDocument());

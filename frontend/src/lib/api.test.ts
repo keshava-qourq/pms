@@ -45,9 +45,9 @@ describe("apiFetch", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(
-      apiFetch("/auth/login", { method: "POST", body: "{}" }),
-    ).rejects.toMatchObject({ status: 401 });
+    await expect(apiFetch("/auth/login", { method: "POST", body: "{}" })).rejects.toMatchObject({
+      status: 401,
+    });
     expect(isAuthenticated()).toBe(false);
   });
 });

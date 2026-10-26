@@ -1,6 +1,6 @@
 """Unit tests for password hashing and JWT issue/verify (US-001)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
@@ -32,7 +32,7 @@ def test_ac_jwt_round_trip_with_pyjwt() -> None:
 
 
 def test_ac_expired_jwt_is_rejected() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expired = jwt.encode(
         {"sub": "user-123", "iat": now - timedelta(hours=2), "exp": now - timedelta(hours=1)},
         JWT_SECRET_KEY,

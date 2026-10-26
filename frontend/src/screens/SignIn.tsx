@@ -1,5 +1,5 @@
 // @ts-nocheck -- generated from the approved design under its JS runtime contract; not hand-written TypeScript.
- 
+
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -7,7 +7,6 @@ import { Icons } from "@/lib/icons";
 import { brand } from "@/lib/brand";
 import { login } from "@/lib/auth";
 
- 
 const { Check, AlertCircle, CheckCircle } = Icons;
 
 const PRODUCT = "PMS";
@@ -71,7 +70,8 @@ export default function Screen() {
       const user = await login(trimmed, password);
       setSignedInName((user && (user.name || user.email)) || trimmed);
       setStatus("success");
-      const from = location.state && location.state.from ? location.state.from.pathname : "/projects";
+      const from =
+        location.state && location.state.from ? location.state.from.pathname : "/projects";
       timer.current = setTimeout(() => navigate(from, { replace: true }), 650);
     } catch {
       setStatus("error");

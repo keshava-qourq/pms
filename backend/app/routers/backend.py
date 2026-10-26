@@ -291,9 +291,7 @@ async def list_project_tasks(
 ) -> list[TaskOut]:
     """-> [{task}]. JWT required; any signed-in member, 404 for an unknown project."""
     _get_project_or_404(db, id)
-    tasks = (
-        db.query(Task).filter(Task.project_id == id).order_by(Task.created_at.desc()).all()
-    )
+    tasks = db.query(Task).filter(Task.project_id == id).order_by(Task.created_at.desc()).all()
     return [TaskOut.model_validate(task) for task in tasks]
 
 

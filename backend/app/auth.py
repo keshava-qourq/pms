@@ -17,9 +17,7 @@ from app.security import decode_access_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
-_UNAUTHORIZED = HTTPException(
-    status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
-)
+_UNAUTHORIZED = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 _INVALID_TOKEN = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
 )

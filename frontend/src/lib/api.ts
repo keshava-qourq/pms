@@ -111,7 +111,10 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(401, `${init?.method ?? "GET"} ${path} failed: 401`);
   }
   if (!response.ok) {
-    throw new ApiError(response.status, `${init?.method ?? "GET"} ${path} failed: ${response.status}`);
+    throw new ApiError(
+      response.status,
+      `${init?.method ?? "GET"} ${path} failed: ${response.status}`,
+    );
   }
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
 }
