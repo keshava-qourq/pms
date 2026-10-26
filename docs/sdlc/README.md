@@ -5,7 +5,7 @@
 <!-- sdlc:auto:start overview -->
 project management system
 
-**Documentation version:** v2
+**Documentation version:** v3
 <!-- sdlc:auto:end overview -->
 
 ## Contents
@@ -15,14 +15,14 @@ project management system
 |---|---|
 | [Requirements](requirements/README.md) | v1 approved |
 | [Architecture](architecture/README.md) | 13 entries |
-| [Development](development/README.md) | 1 entry |
+| [Development](development/README.md) | 20 entries |
 | [Testing](testing/README.md) | 1 entry |
 | [Deployment](deployment/README.md) | 1 entry |
 | [Maintenance](maintenance/README.md) | 1 entry |
 | [Data model](architecture/data-model.md) | generated |
 | [API (OpenAPI)](architecture/api/openapi.yaml) | generated |
 | [Decisions (ADRs)](architecture/adr/README.md) | 4 decisions |
-| [Sprint plan](development/sprint-plan.md) | not generated yet |
+| [Sprint plan](development/sprint-plan.md) | 3 sprints |
 | [Developer guide](development/developer-guide.md) | generated |
 | [API reference](development/api-reference.md) | 1 route |
 | [Test report](testing/test-report.md) | not run yet |
@@ -31,7 +31,7 @@ project management system
 | [Runbook](deployment/runbook.md) | not deployed yet |
 | [Release notes](deployment/release-notes.md) | 0 releases |
 | [Traceability matrix](traceability-matrix.md) | 12 requirements |
-| [Changelog](CHANGELOG.md) | 2 versions |
+| [Changelog](CHANGELOG.md) | 3 versions |
 <!-- sdlc:auto:end contents -->
 
 ## Open gaps
@@ -56,7 +56,25 @@ project management system
 
 ### Development
 
-- Development phase has not started -- no tickets, sprints, or code have been recorded.
+- No implementation/completion status reported for this epic or its child stories.
+- Sprint-to-item mapping is inferred from the sprint goal text; the item list does not explicitly tag each item with a sprint number.
+- No development execution status (progress, completion, review, test results) reported for Sprint 1 items.
+- No development execution status (progress, completion, review, test results) reported for Sprint 2 items.
+- No development execution status (progress, completion, review, test results) reported for Sprint 3 items.
+- No implementation/completion status reported for US-001 or its tasks.
+- No implementation/completion status reported for US-002 or its tasks.
+- No implementation/completion status reported for US-003.
+- No implementation/completion status reported for US-004.
+- No task-level breakdown provided for this story, unlike US-001/US-002.
+- No implementation/completion status reported for US-005.
+- No task-level breakdown provided for this story.
+- No implementation/completion status reported for US-006.
+- No implementation/completion status reported for US-007.
+- No implementation/completion status reported for US-008.
+- No implementation/completion status reported for US-009.
+- No implementation/completion status reported for US-010.
+- No implementation/completion status reported for US-011.
+- No implementation/completion status reported for US-012.
 
 ### Testing
 
