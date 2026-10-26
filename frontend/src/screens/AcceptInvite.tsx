@@ -13,13 +13,7 @@ const { Input, Label } = UI;
 
 const { Check, ArrowRight, AlertCircle, CheckCircle } = Icons;
 
-const WEAK_PASSWORDS = [
-  "password",
-  "password01",
-  "qwertyuiop",
-  "1234567890",
-  "letmein123",
-];
+const WEAK_PASSWORDS = ["password", "password01", "qwertyuiop", "1234567890", "letmein123"];
 
 const STRENGTH_LABELS = ["Not set", "Too weak", "Weak", "Fair", "Strong"];
 
@@ -316,7 +310,10 @@ export default function Screen() {
                 <p className="text-[15px] font-bold" style={{ color: ink }}>
                   This invitation link doesn't work
                 </p>
-                <p className="mt-1 text-[13.5px] leading-[1.6] max-w-[60ch]" style={{ color: muted }}>
+                <p
+                  className="mt-1 text-[13.5px] leading-[1.6] max-w-[60ch]"
+                  style={{ color: muted }}
+                >
                   {formError || INVALID_TOKEN_MESSAGE}
                 </p>
                 <button
@@ -573,8 +570,8 @@ export default function Screen() {
 
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-x-8 gap-y-2">
                     <p className="text-[12px] leading-[1.6] max-w-[58ch]" style={{ color: muted }}>
-                      By creating an account you join the workspace as a member with access to
-                      every project and task.
+                      By creating an account you join the workspace as a member with access to every
+                      project and task.
                     </p>
                     <button
                       type="button"

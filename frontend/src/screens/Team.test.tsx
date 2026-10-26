@@ -81,12 +81,16 @@ describe("Team", () => {
   });
 
   it("[AC-005] does not render the invite form or any invite entry point for a non-administrator", async () => {
-    const fetchMock = fetchMockFor({ me: { id: "u-03", email: "member@example.com", is_admin: false } });
+    const fetchMock = fetchMockFor({
+      me: { id: "u-03", email: "member@example.com", is_admin: false },
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     renderTeam();
 
-    await waitFor(() => expect(screen.getByText(/inviting is an administrator task/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/inviting is an administrator task/i)).toBeInTheDocument(),
+    );
     expect(screen.queryByLabelText(/email address/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /send invitation/i })).not.toBeInTheDocument();
   });
@@ -126,7 +130,9 @@ describe("Team", () => {
   });
 
   it("removes seeded sample invitation data", async () => {
-    const fetchMock = fetchMockFor({ me: { id: "u-01", email: "admin@example.com", is_admin: true } });
+    const fetchMock = fetchMockFor({
+      me: { id: "u-01", email: "admin@example.com", is_admin: true },
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     renderTeam();

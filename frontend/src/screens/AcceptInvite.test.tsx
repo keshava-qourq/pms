@@ -80,9 +80,7 @@ describe("AcceptInvite", () => {
     await fillValidForm(user);
     await user.click(screen.getByRole("button", { name: /create account/i }));
 
-    await waitFor(() =>
-      expect(screen.getByText(/invalid or has expired/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/invalid or has expired/i)).toBeInTheDocument());
     expect(screen.queryByText(/account created/i)).not.toBeInTheDocument();
     expect(getToken()).toBeNull();
   });

@@ -22,7 +22,9 @@ def _make_admin(db_session: Session) -> dict:
     return {"user": user, "token": create_access_token(user.id)}
 
 
-def _make_invitation(db_session: Session, email: str, status: str = "pending", expired: bool = False) -> Invitation:
+def _make_invitation(
+    db_session: Session, email: str, status: str = "pending", expired: bool = False
+) -> Invitation:
     admin = _make_admin(db_session)
     invitation = Invitation(
         email=email,
@@ -89,7 +91,9 @@ def test_ac006_inviting_an_existing_member_returns_409_and_creates_no_invitation
 
     assert response.status_code == 409
     assert "already exists" in response.json()["detail"].lower()
-    assert db_session.query(Invitation).filter(Invitation.email == seed_user["email"]).first() is None
+    assert (
+        db_session.query(Invitation).filter(Invitation.email == seed_user["email"]).first() is None
+    )
     assert db_session.query(User).filter(User.email == seed_user["email"]).count() == 1
 
 
@@ -126,9 +130,7 @@ def test_ac004_accept_invite_with_expired_token_returns_400(db_session: Session)
     email = f"invitee-{uuid.uuid4().hex[:10]}@example.com"
     invitation = _make_invitation(db_session, email, expired=True)
 
-    response = client.post(
-        "/auth/accept-invite", json={"token": invitation.token, "password": "x"}
-    )
+    response = client.post("/auth/accept-invite", json={"token": invitation.token, "password": "x"})
 
     assert response.status_code == 400
 
@@ -137,8 +139,6 @@ def test_ac004_accept_invite_with_already_used_token_returns_400(db_session: Ses
     email = f"invitee-{uuid.uuid4().hex[:10]}@example.com"
     invitation = _make_invitation(db_session, email, status="accepted")
 
-    response = client.post(
-        "/auth/accept-invite", json={"token": invitation.token, "password": "x"}
-    )
+    response = client.post("/auth/accept-invite", json={"token": invitation.token, "password": "x"})
 
     assert response.status_code == 400
