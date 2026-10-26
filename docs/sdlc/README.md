@@ -5,7 +5,7 @@
 <!-- sdlc:auto:start overview -->
 project management system
 
-**Documentation version:** v3
+**Documentation version:** v4
 <!-- sdlc:auto:end overview -->
 
 ## Contents
@@ -15,7 +15,7 @@ project management system
 |---|---|
 | [Requirements](requirements/README.md) | v1 approved |
 | [Architecture](architecture/README.md) | 13 entries |
-| [Development](development/README.md) | 20 entries |
+| [Development](development/README.md) | 7 entries |
 | [Testing](testing/README.md) | 1 entry |
 | [Deployment](deployment/README.md) | 1 entry |
 | [Maintenance](maintenance/README.md) | 1 entry |
@@ -26,12 +26,12 @@ project management system
 | [Developer guide](development/developer-guide.md) | generated |
 | [API reference](development/api-reference.md) | 1 route |
 | [Test report](testing/test-report.md) | not run yet |
-| [Tests](testing/test-cases.md) | 0 tests |
+| [Tests](testing/test-cases.md) | 79 tests |
 | [Deployment guide](deployment/deployment-guide.md) | not deployed yet |
 | [Runbook](deployment/runbook.md) | not deployed yet |
 | [Release notes](deployment/release-notes.md) | 0 releases |
 | [Traceability matrix](traceability-matrix.md) | 12 requirements |
-| [Changelog](CHANGELOG.md) | 3 versions |
+| [Changelog](CHANGELOG.md) | 4 versions |
 <!-- sdlc:auto:end contents -->
 
 ## Open gaps
@@ -56,25 +56,9 @@ project management system
 
 ### Development
 
-- No implementation/completion status reported for this epic or its child stories.
-- Sprint-to-item mapping is inferred from the sprint goal text; the item list does not explicitly tag each item with a sprint number.
-- No development execution status (progress, completion, review, test results) reported for Sprint 1 items.
-- No development execution status (progress, completion, review, test results) reported for Sprint 2 items.
-- No development execution status (progress, completion, review, test results) reported for Sprint 3 items.
-- No implementation/completion status reported for US-001 or its tasks.
-- No implementation/completion status reported for US-002 or its tasks.
-- No implementation/completion status reported for US-003.
-- No implementation/completion status reported for US-004.
-- No task-level breakdown provided for this story, unlike US-001/US-002.
-- No implementation/completion status reported for US-005.
-- No task-level breakdown provided for this story.
-- No implementation/completion status reported for US-006.
-- No implementation/completion status reported for US-007.
-- No implementation/completion status reported for US-008.
-- No implementation/completion status reported for US-009.
-- No implementation/completion status reported for US-010.
-- No implementation/completion status reported for US-011.
-- No implementation/completion status reported for US-012.
+- Development run status is reported as 'completed' but only Sprint 1 tickets (US-001, US-002, US-003) have recorded delivery; no evidence provided that Sprint 2 or Sprint 3 work was executed, confirm whether this is in progress, blocked, or missing from the input.
+- No delivery tickets, commits, or statuses were provided for US-004, US-005, US-006, or US-007 despite the development run being marked 'completed'; status of this sprint's execution is unconfirmed.
+- No delivery tickets, commits, or statuses were provided for US-008, US-009, US-010, US-011, or US-012 despite the development run being marked 'completed'; status of this sprint's execution is unconfirmed.
 
 ### Testing
 
