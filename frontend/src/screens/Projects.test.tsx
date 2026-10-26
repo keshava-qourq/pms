@@ -132,9 +132,7 @@ describe("Projects screen", () => {
     });
 
     await waitFor(() => expect(screen.getAllByText("New Portal").length).toBeGreaterThan(0));
-    expect(
-      screen.getByRole("button", { name: /New Portal/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /New Portal/i })).toBeInTheDocument();
     expect(getCalls).toBeGreaterThanOrEqual(2);
   });
 

@@ -85,7 +85,8 @@ export function useCreateTask(id: string | null) {
       owner_id?: string | null;
       due_date?: string | null;
       status?: string;
-    }) => apiFetch<Task>(`/projects/${id}/tasks`, { method: "POST", body: JSON.stringify(payload) }),
+    }) =>
+      apiFetch<Task>(`/projects/${id}/tasks`, { method: "POST", body: JSON.stringify(payload) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects", id, "tasks"] });
     },

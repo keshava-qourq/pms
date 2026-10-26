@@ -112,9 +112,7 @@ describe("Project screen", () => {
         return Promise.resolve(jsonResponse({ ...TASKS[0], status: currentStatus }));
       }
       if (method === "GET" && url.endsWith("/tasks")) {
-        return Promise.resolve(
-          jsonResponse([{ ...TASKS[0], status: currentStatus }]),
-        );
+        return Promise.resolve(jsonResponse([{ ...TASKS[0], status: currentStatus }]));
       }
       return Promise.resolve(jsonResponse(PROJECT));
     });
@@ -136,7 +134,8 @@ describe("Project screen", () => {
       ),
     );
     const patchCall = fetchMock.mock.calls.find(
-      ([url, init]) => (init as RequestInit)?.method === "PATCH" && String(url).endsWith("/tasks/t-1"),
+      ([url, init]) =>
+        (init as RequestInit)?.method === "PATCH" && String(url).endsWith("/tasks/t-1"),
     );
     expect(JSON.parse((patchCall![1] as RequestInit).body as string)).toEqual({ status: "done" });
 

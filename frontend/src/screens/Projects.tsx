@@ -47,8 +47,7 @@ function ScreenInner() {
         wf: null,
         name: row.project.name,
         description:
-          row.project.description ||
-          "No description yet — add one from the project workspace.",
+          row.project.description || "No description yet — add one from the project workspace.",
         total: row.task_total ?? 0,
         done: row.task_complete ?? 0,
         overdue: 0,
@@ -380,8 +379,7 @@ function ScreenInner() {
               id="all-projects-heading"
               className="text-[13px] font-bold uppercase tracking-[0.18em]"
             >
-              All projects (
-              <span className="tabular-nums">{loading ? 0 : filtered.length}</span>)
+              All projects (<span className="tabular-nums">{loading ? 0 : filtered.length}</span>)
             </h2>
             <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: neutral }}>
               Task progress

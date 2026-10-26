@@ -33,17 +33,8 @@ const {
   Empty,
 } = UI;
 
-const {
-  Plus,
-  Check,
-  X,
-  ChevronRight,
-  ChevronLeft,
-  Clock,
-  ArrowLeft,
-  AlertCircle,
-  CheckCircle,
-} = Icons;
+const { Plus, Check, X, ChevronRight, ChevronLeft, Clock, ArrowLeft, AlertCircle, CheckCircle } =
+  Icons;
 
 const TODAY = "2026-10-26";
 
