@@ -1,40 +1,32 @@
 // @ts-nocheck -- generated from the approved design under its JS runtime contract; not hand-written TypeScript.
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import React from "react";
+import { useLocation } from "react-router-dom";
 
 import * as UI from "@/lib/ui";
 import { Icons } from "@/lib/icons";
 import { brand } from "@/lib/brand";
 import { useNavigate } from "@/lib/navigate";
+import { apiFetch, setSession, ApiError } from "@/lib/api";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { Input, Label, Badge } = UI;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { Check, Clock, ArrowRight, AlertCircle, CheckCircle } = Icons;
+const { Input, Label } = UI;
 
-const INVITE = {
-  email: "anna.reed@northbay.co",
-  inviter: "Dana Whitfield",
-  inviter_email: "dana.whitfield@northbay.co",
-  workspace: "Northbay Studio",
-  token: "7F2A-C91D-4B60",
-  sent_at: "19 Oct 2026, 09:14",
-  expires_at: "2 Nov 2026",
-  verified: "2 minutes ago",
-  seats_used: 18,
-  seats_total: 25,
-};
+const { Check, ArrowRight, AlertCircle, CheckCircle } = Icons;
 
 const WEAK_PASSWORDS = [
   "password",
   "password01",
-  "northbay2026",
   "qwertyuiop",
   "1234567890",
   "letmein123",
 ];
 
 const STRENGTH_LABELS = ["Not set", "Too weak", "Weak", "Fair", "Strong"];
+
+const INVALID_TOKEN_MESSAGE =
+  "This invitation link is invalid or has expired. Ask whoever invited you to send a new one.";
+
+const LABEL_CLASS = "block text-[11px] font-bold uppercase tracking-[0.16em]";
 
 function scorePassword(value) {
   if (!value) return 0;
@@ -45,6 +37,55 @@ function scorePassword(value) {
   if (/[^A-Za-z0-9]/.test(value)) score += 1;
   if (value.length < 8) score = 1;
   return Math.max(0, Math.min(score, 4));
+}
+
+// Module-level: defined once, not recreated on every Screen render, so the inputs it
+// wraps keep their identity (and focus/selection) across keystrokes instead of being
+// unmounted and remounted each time the form state changes.
+function FieldRow({ num, label, htmlFor, hint, ink, muted, children }) {
+  const rowBorder = { borderColor: ink };
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-[196px_1fr] border-b-2" style={rowBorder}>
+      <div
+        className="flex items-start gap-3 px-4 py-4 sm:border-r-2 border-b-2 sm:border-b-0"
+        style={rowBorder}
+      >
+        <span
+          className="text-[11px] font-bold pt-[2px]"
+          style={{ color: muted, fontVariantNumeric: "tabular-nums" }}
+          aria-hidden="true"
+        >
+          {num}
+        </span>
+        <div>
+          <Label htmlFor={htmlFor} className={LABEL_CLASS} style={{ color: ink }}>
+            {label}
+          </Label>
+          <p className="mt-1 text-[12px] leading-[1.5]" style={{ color: muted }}>
+            {hint}
+          </p>
+        </div>
+      </div>
+      <div className="px-4 py-4">{children}</div>
+    </div>
+  );
+}
+
+function ErrorNote({ id, accent, children }) {
+  return (
+    <p
+      id={id}
+      role="alert"
+      className="mt-2 flex items-start gap-1.5 text-[12.5px] font-medium leading-[1.5]"
+      style={{ color: accent }}
+    >
+      <AlertCircle className="h-4 w-4 shrink-0 mt-[1px]" aria-hidden="true" />
+      <span>
+        <span className="font-bold uppercase tracking-[0.1em] text-[11px] mr-1">Error</span>
+        {children}
+      </span>
+    </p>
+  );
 }
 
 const SHEET_CSS = `
@@ -85,10 +126,17 @@ const SHEET_CSS = `
 
 export default function Screen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const ink = brand.primaryColor;
   const accent = brand.accentColor;
   const muted = brand.neutralColor;
   const bg = brand.backgroundColor;
+  const rowBorder = { borderColor: ink };
+
+  const token = React.useMemo(() => {
+    const params = new URLSearchParams(location.search || "");
+    return params.get("token") || "";
+  }, [location.search]);
 
   const [values, setValues] = React.useState({
     full_name: "",
@@ -96,8 +144,8 @@ export default function Screen() {
     confirm: "",
   });
   const [errors, setErrors] = React.useState({});
-  const [formError, setFormError] = React.useState(null);
-  const [status, setStatus] = React.useState("idle"); // idle | submitting | created
+  const [formError, setFormError] = React.useState(token ? null : INVALID_TOKEN_MESSAGE);
+  const [status, setStatus] = React.useState(token ? "idle" : "invalid"); // idle | submitting | created | invalid
   const [showPassword, setShowPassword] = React.useState(false);
 
   const nameRef = React.useRef(null);
@@ -113,6 +161,7 @@ export default function Screen() {
 
   const busy = status === "submitting";
   const done = status === "created";
+  const invalid = status === "invalid";
   const strength = scorePassword(values.password);
 
   function setField(key, value) {
@@ -150,9 +199,9 @@ export default function Screen() {
     return next;
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    if (busy || done) return;
+    if (busy || done || invalid) return;
 
     const found = validate();
     setErrors(found);
@@ -161,7 +210,7 @@ export default function Screen() {
       setFormError(
         keys.length === 1
           ? "We can't create the account yet — one field below needs attention."
-          : "We can't create the account yet — " + keys.length + " fields below need attention."
+          : "We can't create the account yet — " + keys.length + " fields below need attention.",
       );
       const order = ["full_name", "password", "confirm"];
       const first = order.filter((k) => keys.indexOf(k) !== -1)[0];
@@ -172,59 +221,26 @@ export default function Screen() {
 
     setFormError(null);
     setStatus("submitting");
-    timerRef.current = setTimeout(() => setStatus("created"), 1000);
-  }
-
-  const labelClass =
-    "block text-[11px] font-bold uppercase tracking-[0.16em]";
-  const rowBorder = { borderColor: ink };
-
-  function FieldRow(props) {
-    return (
-      <div
-        className="grid grid-cols-1 sm:grid-cols-[196px_1fr] border-b-2"
-        style={rowBorder}
-      >
-        <div
-          className="flex items-start gap-3 px-4 py-4 sm:border-r-2 border-b-2 sm:border-b-0"
-          style={rowBorder}
-        >
-          <span
-            className="text-[11px] font-bold pt-[2px]"
-            style={{ color: muted, fontVariantNumeric: "tabular-nums" }}
-            aria-hidden="true"
-          >
-            {props.num}
-          </span>
-          <div>
-            <Label htmlFor={props.htmlFor} className={labelClass} style={{ color: ink }}>
-              {props.label}
-            </Label>
-            <p className="mt-1 text-[12px] leading-[1.5]" style={{ color: muted }}>
-              {props.hint}
-            </p>
-          </div>
-        </div>
-        <div className="px-4 py-4">{props.children}</div>
-      </div>
-    );
-  }
-
-  function ErrorNote(props) {
-    return (
-      <p
-        id={props.id}
-        role="alert"
-        className="mt-2 flex items-start gap-1.5 text-[12.5px] font-medium leading-[1.5]"
-        style={{ color: accent }}
-      >
-        <AlertCircle className="h-4 w-4 shrink-0 mt-[1px]" aria-hidden="true" />
-        <span>
-          <span className="font-bold uppercase tracking-[0.1em] text-[11px] mr-1">Error</span>
-          {props.children}
-        </span>
-      </p>
-    );
+    try {
+      const result = await apiFetch("/auth/accept-invite", {
+        method: "POST",
+        body: JSON.stringify({
+          token,
+          password: values.password,
+          name: values.full_name.trim(),
+        }),
+      });
+      setSession(result.access_token, result.user);
+      setStatus("created");
+      timerRef.current = setTimeout(() => navigate("projects"), 650);
+    } catch (err) {
+      setStatus("invalid");
+      setFormError(
+        err instanceof ApiError
+          ? INVALID_TOKEN_MESSAGE
+          : "We couldn't create your account. Try again.",
+      );
+    }
   }
 
   return (
@@ -257,21 +273,11 @@ export default function Screen() {
             PMS
           </span>
           <span className="h-4 w-[2px] block" style={{ backgroundColor: ink }} aria-hidden="true" />
-          <span className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: muted }}>
+          <span
+            className="text-[11px] font-bold uppercase tracking-[0.18em]"
+            style={{ color: muted }}
+          >
             Invitation
-          </span>
-        </div>
-        <div
-          className="flex items-center gap-5 text-[11px] uppercase tracking-[0.14em]"
-          style={{ color: muted, fontVariantNumeric: "tabular-nums" }}
-        >
-          <span>
-            Token&nbsp;
-            <span style={{ color: ink }} className="font-bold">{INVITE.token}</span>
-          </span>
-          <span className="hidden sm:flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-            Link verified {INVITE.verified}
           </span>
         </div>
       </header>
@@ -280,7 +286,10 @@ export default function Screen() {
         <div className="max-w-[880px]">
           {/* b-0-0 — page title */}
           <div data-wf="b-0-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: muted }}>
+            <p
+              className="text-[11px] font-bold uppercase tracking-[0.2em]"
+              style={{ color: muted }}
+            >
               Step 1 of 1 — Create your account
             </p>
             <h1
@@ -291,328 +300,295 @@ export default function Screen() {
             </h1>
           </div>
 
-          {/* b-1-0 — invitation record */}
-          <div
-            data-wf="b-1-0"
-            className="mt-8 border-2 grid grid-cols-1 lg:grid-cols-[1fr_300px]"
-            style={rowBorder}
-          >
-            <div className="px-5 py-5 border-b-2 lg:border-b-0 lg:border-r-2" style={rowBorder}>
-              <p className="text-[15px] leading-[1.6] max-w-[60ch]">
-                <span className="font-bold">{INVITE.inviter}</span> invited you to join the PMS
-                workspace. Set your name and a password to create your account. This invitation
-                expires on{" "}
-                <span className="font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {INVITE.expires_at}
-                </span>
-                .
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Badge
-                  className="rounded-none border-2 px-2 py-[3px] text-[10.5px] font-bold uppercase tracking-[0.14em] bg-transparent"
-                  style={{ borderColor: ink, color: ink, borderRadius: brand.radius }}
-                >
-                  Member access
-                </Badge>
-                <span className="text-[12px]" style={{ color: muted }}>
-                  Every member can see and edit all projects and tasks.
-                </span>
-              </div>
-            </div>
-            <dl className="px-5 py-5 text-[12.5px]" style={{ fontVariantNumeric: "tabular-nums" }}>
-              {[
-                ["Workspace", INVITE.workspace],
-                ["Invited by", INVITE.inviter_email],
-                ["Sent", INVITE.sent_at],
-                ["Seats used", INVITE.seats_used + " of " + INVITE.seats_total],
-              ].map(function (pair, i) {
-                return (
-                  <div
-                    key={pair[0]}
-                    className={
-                      "flex items-baseline justify-between gap-4 py-[7px] " +
-                      (i === 0 ? "" : "border-t")
-                    }
-                    style={{ borderColor: "rgba(17,17,17,0.14)" }}
-                  >
-                    <dt className="text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: muted }}>
-                      {pair[0]}
-                    </dt>
-                    <dd className="text-right font-medium truncate" style={{ color: ink }}>
-                      {pair[1]}
-                    </dd>
-                  </div>
-                );
-              })}
-            </dl>
-          </div>
-
-          {/* b-2-0 — form */}
-          <form data-wf="b-2-0" onSubmit={handleSubmit} noValidate className="mt-10">
-            <div className="flex items-baseline justify-between gap-4 mb-3">
-              <h2
-                className="text-[13px] font-bold uppercase tracking-[0.18em]"
-                style={{ fontFamily: brand.fontHeading, color: ink }}
-              >
-                Account details
-              </h2>
-              <span className="text-[11.5px]" style={{ color: muted }}>
-                All four fields required
-              </span>
-            </div>
-
-            {formError && !done ? (
-              <div
-                className="pms-rise border-2 px-4 py-3 mb-4 flex items-start gap-2"
-                style={{ borderColor: accent, borderRadius: brand.radius }}
-                role="alert"
-              >
-                <AlertCircle className="h-4 w-4 mt-[2px] shrink-0" style={{ color: accent }} aria-hidden="true" />
-                <p className="text-[13px] leading-[1.5]" style={{ color: ink }}>
-                  <span className="font-bold">Not submitted. </span>
-                  {formError} Nothing you typed was lost.
+          {invalid ? (
+            <div
+              className="pms-rise mt-8 border-2 px-5 py-5 flex items-start gap-3"
+              style={{ borderColor: accent, borderRadius: brand.radius }}
+              role="alert"
+              data-wf="b-1-0"
+            >
+              <AlertCircle
+                className="h-5 w-5 mt-[2px] shrink-0"
+                style={{ color: accent }}
+                aria-hidden="true"
+              />
+              <div>
+                <p className="text-[15px] font-bold" style={{ color: ink }}>
+                  This invitation link doesn't work
                 </p>
-              </div>
-            ) : null}
-
-            {done ? (
-              <div
-                className="pms-rise border-2 px-4 py-3 mb-4 flex items-start gap-2"
-                style={{ borderColor: ink, borderRadius: brand.radius, backgroundColor: "var(--wash)" }}
-                role="status"
-              >
-                <CheckCircle className="h-4 w-4 mt-[2px] shrink-0" style={{ color: ink }} aria-hidden="true" />
-                <p className="text-[13px] leading-[1.5]" style={{ color: ink }}>
-                  <span className="font-bold">Account created. </span>
-                  {values.full_name.trim()} is now a member of {INVITE.workspace}. Open the workspace
-                  to pick up your first project.
-                </p>
-              </div>
-            ) : null}
-
-            <div className="border-2" style={rowBorder}>
-              {/* i-2-0-0 */}
-              <FieldRow
-                num="01"
-                label="Email address"
-                htmlFor="invite-email"
-                hint="Fixed by this invitation."
-              >
-                <div className="flex flex-wrap items-center gap-3">
-                  <Input
-                    id="invite-email"
-                    data-wf="i-2-0-0"
-                    name="email"
-                    type="email"
-                    value={INVITE.email}
-                    readOnly
-                    className="pms-input sm:max-w-[360px]"
-                    style={{ border: "2px solid " + ink, borderRadius: brand.radius }}
-                    aria-describedby="invite-email-note"
-                  />
-                  <span
-                    className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: muted }}
-                  >
-                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                    Locked
-                  </span>
-                </div>
-                <p id="invite-email-note" className="mt-2 text-[12px]" style={{ color: muted }}>
-                  Wrong address? Ask {INVITE.inviter} to send a new invitation.
-                </p>
-              </FieldRow>
-
-              {/* i-2-0-1 */}
-              <FieldRow
-                num="02"
-                label="Full name"
-                htmlFor="invite-name"
-                hint="Shown on tasks you own and on comments."
-              >
-                <Input
-                  id="invite-name"
-                  data-wf="i-2-0-1"
-                  ref={nameRef}
-                  name="full_name"
-                  type="text"
-                  autoComplete="name"
-                  placeholder="Anna Reed"
-                  value={values.full_name}
-                  disabled={busy || done}
-                  onChange={(e) => setField("full_name", e.target.value)}
-                  className="pms-input sm:max-w-[360px]"
-                  style={{ border: "2px solid " + (errors.full_name ? accent : ink), borderRadius: brand.radius }}
-                  aria-invalid={errors.full_name ? "true" : "false"}
-                  aria-describedby={errors.full_name ? "invite-name-error" : undefined}
-                />
-                {errors.full_name ? (
-                  <ErrorNote id="invite-name-error">{errors.full_name}</ErrorNote>
-                ) : null}
-              </FieldRow>
-
-              {/* i-2-0-2 */}
-              <FieldRow
-                num="03"
-                label="Password"
-                htmlFor="invite-password"
-                hint="At least 10 characters. Mix letters, numbers and a symbol."
-              >
-                <div className="flex flex-wrap items-center gap-3">
-                  <Input
-                    id="invite-password"
-                    data-wf="i-2-0-2"
-                    ref={passwordRef}
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={values.password}
-                    disabled={busy || done}
-                    onChange={(e) => setField("password", e.target.value)}
-                    className="pms-input sm:max-w-[360px]"
-                    style={{ border: "2px solid " + (errors.password ? accent : ink), borderRadius: brand.radius }}
-                    aria-invalid={errors.password ? "true" : "false"}
-                    aria-describedby="invite-password-strength"
-                  />
-                  <button
-                    type="button"
-                    className="pms-link text-[12px] font-bold uppercase tracking-[0.12em] min-h-[44px] px-1"
-                    style={{ color: ink, background: "transparent" }}
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-pressed={showPassword}
-                  >
-                    {showPassword ? "Hide password" : "Show password"}
-                  </button>
-                </div>
-
-                <div className="mt-3 flex items-center gap-3 sm:max-w-[360px]">
-                  <div className="flex gap-[3px] flex-1" aria-hidden="true">
-                    {[1, 2, 3, 4].map(function (seg) {
-                      return (
-                        <span
-                          key={seg}
-                          className="pms-seg h-[7px] flex-1 border-2"
-                          style={{
-                            borderColor: ink,
-                            backgroundColor: strength >= seg ? ink : "transparent",
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                  <span
-                    id="invite-password-strength"
-                    aria-live="polite"
-                    className="text-[11px] font-bold uppercase tracking-[0.12em] w-[78px] text-right"
-                    style={{ color: strength >= 3 ? ink : muted }}
-                  >
-                    {STRENGTH_LABELS[strength]}
-                  </span>
-                </div>
-
-                {errors.password ? (
-                  <ErrorNote id="invite-password-error">{errors.password}</ErrorNote>
-                ) : null}
-              </FieldRow>
-
-              {/* i-2-0-3 */}
-              <div className="grid grid-cols-1 sm:grid-cols-[196px_1fr]">
-                <div
-                  className="flex items-start gap-3 px-4 py-4 sm:border-r-2 border-b-2 sm:border-b-0"
-                  style={rowBorder}
-                >
-                  <span
-                    className="text-[11px] font-bold pt-[2px]"
-                    style={{ color: muted, fontVariantNumeric: "tabular-nums" }}
-                    aria-hidden="true"
-                  >
-                    04
-                  </span>
-                  <div>
-                    <Label htmlFor="invite-confirm" className={labelClass} style={{ color: ink }}>
-                      Confirm password
-                    </Label>
-                    <p className="mt-1 text-[12px] leading-[1.5]" style={{ color: muted }}>
-                      Type it once more to be sure.
-                    </p>
-                  </div>
-                </div>
-                <div className="px-4 py-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Input
-                      id="invite-confirm"
-                      data-wf="i-2-0-3"
-                      ref={confirmRef}
-                      name="confirm_password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="new-password"
-                      value={values.confirm}
-                      disabled={busy || done}
-                      onChange={(e) => setField("confirm", e.target.value)}
-                      className="pms-input sm:max-w-[360px]"
-                      style={{ border: "2px solid " + (errors.confirm ? accent : ink), borderRadius: brand.radius }}
-                      aria-invalid={errors.confirm ? "true" : "false"}
-                      aria-describedby={errors.confirm ? "invite-confirm-error" : undefined}
-                    />
-                    {values.confirm && values.confirm === values.password && !errors.confirm ? (
-                      <span
-                        className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
-                        style={{ color: ink }}
-                      >
-                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                        Matches
-                      </span>
-                    ) : null}
-                  </div>
-                  {errors.confirm ? (
-                    <ErrorNote id="invite-confirm-error">{errors.confirm}</ErrorNote>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-
-            {/* b-3-0 — primary action */}
-            <div className="mt-8">
-              <button
-                data-wf="b-3-0"
-                type={done ? "button" : "submit"}
-                disabled={busy}
-                onClick={done ? () => navigate("projects") : undefined}
-                className="pms-btn relative w-full overflow-hidden flex items-center justify-center gap-3 px-6 min-h-[56px] text-[14px] font-bold uppercase tracking-[0.2em] disabled:opacity-70 disabled:cursor-wait"
-                style={{
-                  backgroundColor: ink,
-                  color: bg,
-                  border: "2px solid " + ink,
-                  borderRadius: brand.radius,
-                }}
-              >
-                {busy ? "Creating account…" : done ? "Open the workspace" : "Create account"}
-                {!busy ? <ArrowRight className="h-4 w-4" aria-hidden="true" /> : null}
-                {busy ? (
-                  <span
-                    className="absolute left-0 bottom-0 h-[3px] w-1/4 pms-sweep"
-                    style={{ backgroundColor: accent }}
-                    aria-hidden="true"
-                  />
-                ) : null}
-              </button>
-
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-8 gap-y-2">
-                <p className="text-[12px] leading-[1.6] max-w-[58ch]" style={{ color: muted }}>
-                  By creating an account you join {INVITE.workspace} as a member with access to every
-                  project and task in the workspace.
+                <p className="mt-1 text-[13.5px] leading-[1.6] max-w-[60ch]" style={{ color: muted }}>
+                  {formError || INVALID_TOKEN_MESSAGE}
                 </p>
                 <button
                   type="button"
-                  className="pms-link text-[12px] font-bold uppercase tracking-[0.12em] min-h-[44px]"
+                  className="pms-link mt-3 inline-block text-[12px] font-bold uppercase tracking-[0.12em] min-h-[44px]"
                   style={{ color: ink, background: "transparent" }}
                   onClick={() => navigate("sign-in")}
                 >
-                  Already a member? Sign in
+                  Go to sign in
                 </button>
               </div>
             </div>
-          </form>
+          ) : (
+            <React.Fragment>
+              <div data-wf="b-1-0" className="mt-8 border-2 px-5 py-5" style={rowBorder}>
+                <p className="text-[15px] leading-[1.6] max-w-[60ch]">
+                  You've been invited to join this workspace. Set your name and a password below to
+                  create your account.
+                </p>
+              </div>
+
+              {/* b-2-0 — form */}
+              <form data-wf="b-2-0" onSubmit={handleSubmit} noValidate className="mt-10">
+                <div className="flex items-baseline justify-between gap-4 mb-3">
+                  <h2
+                    className="text-[13px] font-bold uppercase tracking-[0.18em]"
+                    style={{ fontFamily: brand.fontHeading, color: ink }}
+                  >
+                    Account details
+                  </h2>
+                  <span className="text-[11.5px]" style={{ color: muted }}>
+                    All three fields required
+                  </span>
+                </div>
+
+                {formError && !done ? (
+                  <div
+                    className="pms-rise border-2 px-4 py-3 mb-4 flex items-start gap-2"
+                    style={{ borderColor: accent, borderRadius: brand.radius }}
+                    role="alert"
+                  >
+                    <AlertCircle
+                      className="h-4 w-4 mt-[2px] shrink-0"
+                      style={{ color: accent }}
+                      aria-hidden="true"
+                    />
+                    <p className="text-[13px] leading-[1.5]" style={{ color: ink }}>
+                      <span className="font-bold">Not submitted. </span>
+                      {formError} Nothing you typed was lost.
+                    </p>
+                  </div>
+                ) : null}
+
+                {done ? (
+                  <div
+                    className="pms-rise border-2 px-4 py-3 mb-4 flex items-start gap-2"
+                    style={{
+                      borderColor: ink,
+                      borderRadius: brand.radius,
+                      backgroundColor: "var(--wash)",
+                    }}
+                    role="status"
+                  >
+                    <CheckCircle
+                      className="h-4 w-4 mt-[2px] shrink-0"
+                      style={{ color: ink }}
+                      aria-hidden="true"
+                    />
+                    <p className="text-[13px] leading-[1.5]" style={{ color: ink }}>
+                      <span className="font-bold">Account created. </span>
+                      {values.full_name.trim()} is now a member of the workspace. Opening the
+                      projects overview…
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="border-2" style={rowBorder}>
+                  {/* i-2-0-0 */}
+                  <FieldRow
+                    num="01"
+                    label="Full name"
+                    htmlFor="invite-name"
+                    hint="Shown on tasks you own and on comments."
+                    ink={ink}
+                    muted={muted}
+                  >
+                    <Input
+                      id="invite-name"
+                      data-wf="i-2-0-0"
+                      ref={nameRef}
+                      name="full_name"
+                      type="text"
+                      autoComplete="name"
+                      placeholder="Your name"
+                      value={values.full_name}
+                      disabled={busy || done}
+                      onChange={(e) => setField("full_name", e.target.value)}
+                      className="pms-input sm:max-w-[360px]"
+                      style={{
+                        border: "2px solid " + (errors.full_name ? accent : ink),
+                        borderRadius: brand.radius,
+                      }}
+                      aria-invalid={errors.full_name ? "true" : "false"}
+                      aria-describedby={errors.full_name ? "invite-name-error" : undefined}
+                    />
+                    {errors.full_name ? (
+                      <ErrorNote id="invite-name-error" accent={accent}>
+                        {errors.full_name}
+                      </ErrorNote>
+                    ) : null}
+                  </FieldRow>
+
+                  {/* i-2-0-1 */}
+                  <FieldRow
+                    num="02"
+                    label="Password"
+                    htmlFor="invite-password"
+                    hint="At least 10 characters. Mix letters, numbers and a symbol."
+                    ink={ink}
+                    muted={muted}
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Input
+                        id="invite-password"
+                        data-wf="i-2-0-1"
+                        ref={passwordRef}
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={values.password}
+                        disabled={busy || done}
+                        onChange={(e) => setField("password", e.target.value)}
+                        className="pms-input sm:max-w-[360px]"
+                        style={{
+                          border: "2px solid " + (errors.password ? accent : ink),
+                          borderRadius: brand.radius,
+                        }}
+                        aria-invalid={errors.password ? "true" : "false"}
+                        aria-describedby="invite-password-strength"
+                      />
+                      <button
+                        type="button"
+                        className="pms-link text-[12px] font-bold uppercase tracking-[0.12em] min-h-[44px] px-1"
+                        style={{ color: ink, background: "transparent" }}
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-pressed={showPassword}
+                      >
+                        {showPassword ? "Hide password" : "Show password"}
+                      </button>
+                    </div>
+
+                    <div className="mt-3 flex items-center gap-3 sm:max-w-[360px]">
+                      <div className="flex gap-[3px] flex-1" aria-hidden="true">
+                        {[1, 2, 3, 4].map(function (seg) {
+                          return (
+                            <span
+                              key={seg}
+                              className="pms-seg h-[7px] flex-1 border-2"
+                              style={{
+                                borderColor: ink,
+                                backgroundColor: strength >= seg ? ink : "transparent",
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                      <span
+                        id="invite-password-strength"
+                        aria-live="polite"
+                        className="text-[11px] font-bold uppercase tracking-[0.12em] w-[78px] text-right"
+                        style={{ color: strength >= 3 ? ink : muted }}
+                      >
+                        {STRENGTH_LABELS[strength]}
+                      </span>
+                    </div>
+
+                    {errors.password ? (
+                      <ErrorNote id="invite-password-error" accent={accent}>
+                        {errors.password}
+                      </ErrorNote>
+                    ) : null}
+                  </FieldRow>
+
+                  {/* i-2-0-2 */}
+                  <FieldRow
+                    num="03"
+                    label="Confirm password"
+                    htmlFor="invite-confirm"
+                    hint="Type it once more to be sure."
+                    ink={ink}
+                    muted={muted}
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Input
+                        id="invite-confirm"
+                        data-wf="i-2-0-2"
+                        ref={confirmRef}
+                        name="confirm_password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={values.confirm}
+                        disabled={busy || done}
+                        onChange={(e) => setField("confirm", e.target.value)}
+                        className="pms-input sm:max-w-[360px]"
+                        style={{
+                          border: "2px solid " + (errors.confirm ? accent : ink),
+                          borderRadius: brand.radius,
+                        }}
+                        aria-invalid={errors.confirm ? "true" : "false"}
+                        aria-describedby={errors.confirm ? "invite-confirm-error" : undefined}
+                      />
+                      {values.confirm && values.confirm === values.password && !errors.confirm ? (
+                        <span
+                          className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
+                          style={{ color: ink }}
+                        >
+                          <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                          Matches
+                        </span>
+                      ) : null}
+                    </div>
+                    {errors.confirm ? (
+                      <ErrorNote id="invite-confirm-error" accent={accent}>
+                        {errors.confirm}
+                      </ErrorNote>
+                    ) : null}
+                  </FieldRow>
+                </div>
+
+                {/* b-3-0 — primary action */}
+                <div className="mt-8">
+                  <button
+                    data-wf="b-3-0"
+                    type="submit"
+                    disabled={busy || done}
+                    className="pms-btn relative w-full overflow-hidden flex items-center justify-center gap-3 px-6 min-h-[56px] text-[14px] font-bold uppercase tracking-[0.2em] disabled:opacity-70 disabled:cursor-wait"
+                    style={{
+                      backgroundColor: ink,
+                      color: bg,
+                      border: "2px solid " + ink,
+                      borderRadius: brand.radius,
+                    }}
+                  >
+                    {busy ? "Creating account…" : done ? "Account created" : "Create account"}
+                    {!busy ? <ArrowRight className="h-4 w-4" aria-hidden="true" /> : null}
+                    {busy ? (
+                      <span
+                        className="absolute left-0 bottom-0 h-[3px] w-1/4 pms-sweep"
+                        style={{ backgroundColor: accent }}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                  </button>
+
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-x-8 gap-y-2">
+                    <p className="text-[12px] leading-[1.6] max-w-[58ch]" style={{ color: muted }}>
+                      By creating an account you join the workspace as a member with access to
+                      every project and task.
+                    </p>
+                    <button
+                      type="button"
+                      className="pms-link text-[12px] font-bold uppercase tracking-[0.12em] min-h-[44px]"
+                      style={{ color: ink, background: "transparent" }}
+                      onClick={() => navigate("sign-in")}
+                    >
+                      Already a member? Sign in
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </React.Fragment>
+          )}
         </div>
       </main>
     </div>

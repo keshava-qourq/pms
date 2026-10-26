@@ -1,6 +1,6 @@
 """Integration tests for POST /auth/login, GET /auth/me and NFR-001 (US-001)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from fastapi.testclient import TestClient
@@ -76,7 +76,7 @@ def test_ac_me_rejects_malformed_token() -> None:
 
 
 def test_ac_me_rejects_expired_token(seed_user) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expired = jwt.encode(
         {
             "sub": seed_user["user"].id,
@@ -109,8 +109,10 @@ def test_nfr001_login_route_needs_no_token() -> None:
 
 
 def test_nfr001_accept_invite_route_needs_no_token() -> None:
-    response = client.post("/auth/accept-invite", json={})
-    assert response.status_code == 200
+    # No Authorization header: reaches the handler (400 for an unknown token,
+    # not 401 for a missing one) rather than being rejected by auth itself.
+    response = client.post("/auth/accept-invite", json={"token": "nope", "password": "x"})
+    assert response.status_code == 400
 
 
 def test_nfr001_health_route_needs_no_token() -> None:

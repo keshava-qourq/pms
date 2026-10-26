@@ -4,6 +4,8 @@ One pair per entity in the approved data model, plus the placeholder every
 generated route returns until it has been implemented.
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -40,8 +42,36 @@ class UserOut(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    """What POST /auth/login returns on success."""
+    """What POST /auth/login (and accept-invite) returns on success."""
 
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+class InvitationCreate(BaseModel):
+    """{email} as POST /invitations expects."""
+
+    email: str
+
+
+class InvitationOut(BaseModel):
+    """The invitation record returned by POST /invitations."""
+
+    id: str
+    email: str
+    status: str
+    invited_by: str
+    expires_at: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AcceptInviteRequest(BaseModel):
+    """{token, password, name?} as POST /auth/accept-invite expects."""
+
+    token: str
+    password: str
+    name: str | None = None
