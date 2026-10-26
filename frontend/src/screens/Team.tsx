@@ -1,5 +1,4 @@
 // @ts-nocheck -- generated from the approved design under its JS runtime contract; not hand-written TypeScript.
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React from "react";
 
 import * as UI from "@/lib/ui";
@@ -10,7 +9,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 
 const { Button, Input, Label, Badge, Table, THead, TBody, TR, TH, TD, Avatar, Empty } = UI;
 
-const { Check, ChevronDown, User, Clock, ArrowRight, AlertCircle, CheckCircle } = Icons;
+const { ChevronDown, User, Clock, ArrowRight, AlertCircle, CheckCircle } = Icons;
 
 const MEMBERS = [
   {
@@ -460,7 +459,9 @@ export default function Screen() {
               role="status"
               aria-live="polite"
               className="px-6 py-4 md:px-8"
-              style={{ borderLeft: feedback.kind === "idle" ? "none" : "2px solid " + feedbackTone }}
+              style={{
+                borderLeft: feedback.kind === "idle" ? "none" : "2px solid " + feedbackTone,
+              }}
             >
               {feedback.kind === "idle" && (
                 <p className="text-[13px] leading-[1.55] max-w-[72ch]" style={{ color: muted }}>
@@ -559,13 +560,28 @@ export default function Screen() {
               <Table className="w-full" style={{ fontVariantNumeric: "tabular-nums" }}>
                 <THead>
                   <TR style={{ borderBottom: "1px solid " + hair }}>
-                    <TH scope="col" data-wf="i-4-0-0" className="px-3 py-2 text-left" style={labelStyle}>
+                    <TH
+                      scope="col"
+                      data-wf="i-4-0-0"
+                      className="px-3 py-2 text-left"
+                      style={labelStyle}
+                    >
                       Email
                     </TH>
-                    <TH scope="col" data-wf="i-4-0-1" className="px-3 py-2 text-left" style={labelStyle}>
+                    <TH
+                      scope="col"
+                      data-wf="i-4-0-1"
+                      className="px-3 py-2 text-left"
+                      style={labelStyle}
+                    >
                       Sent
                     </TH>
-                    <TH scope="col" data-wf="i-4-0-2" className="px-3 py-2 text-right" style={labelStyle}>
+                    <TH
+                      scope="col"
+                      data-wf="i-4-0-2"
+                      className="px-3 py-2 text-right"
+                      style={labelStyle}
+                    >
                       Expires
                     </TH>
                   </TR>

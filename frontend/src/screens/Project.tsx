@@ -1,5 +1,4 @@
 // @ts-nocheck -- generated from the approved design under its JS runtime contract; not hand-written TypeScript.
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React from "react";
 
 import * as UI from "@/lib/ui";
@@ -41,9 +40,7 @@ const {
   ChevronRight,
   ChevronLeft,
   Clock,
-  Edit,
   ArrowLeft,
-  ArrowRight,
   AlertCircle,
   CheckCircle,
 } = Icons;
@@ -74,181 +71,6 @@ const LABELS = [
   { id: "l5", name: "Blocked", color: "accent" },
   { id: "l6", name: "SEO", color: "neutral" },
 ];
-
-const SEED_TASKS = [
-  {
-    id: "t-204",
-    wf: "i-3-0-0",
-    title: "Audit current sitemap",
-    owner_id: "u1",
-    due_date: "2026-11-03",
-    status: "todo",
-    labels: ["l1"],
-  },
-  {
-    id: "t-207",
-    wf: "i-3-0-1",
-    title: "Draft new nav structure",
-    owner_id: "u2",
-    due_date: "2026-11-06",
-    status: "todo",
-    labels: ["l2"],
-  },
-  {
-    id: "t-211",
-    wf: "i-3-0-2",
-    title: "Collect brand assets",
-    owner_id: null,
-    due_date: "2026-11-10",
-    status: "todo",
-    labels: [],
-  },
-  {
-    id: "t-213",
-    wf: null,
-    title: "Set up 301 redirect map",
-    owner_id: "u4",
-    due_date: "2026-10-24",
-    status: "todo",
-    labels: ["l6", "l5"],
-  },
-  {
-    id: "t-198",
-    wf: "i-3-1-0",
-    title: "Build component library",
-    owner_id: "u3",
-    due_date: "2026-11-12",
-    status: "in_progress",
-    labels: ["l2", "l4"],
-  },
-  {
-    id: "t-201",
-    wf: "i-3-1-1",
-    title: "Rewrite pricing copy",
-    owner_id: "u2",
-    due_date: "2026-11-05",
-    status: "in_progress",
-    labels: ["l3"],
-  },
-  {
-    id: "t-160",
-    wf: "i-3-2-0",
-    title: "Stakeholder interviews",
-    owner_id: "u1",
-    due_date: "2026-10-20",
-    status: "done",
-    labels: ["l1"],
-  },
-  {
-    id: "t-166",
-    wf: "i-3-2-1",
-    title: "Analytics baseline",
-    owner_id: "u3",
-    due_date: "2026-10-22",
-    status: "done",
-    labels: [],
-  },
-  {
-    id: "t-141",
-    wf: null,
-    title: "Competitor teardown",
-    owner_id: "u1",
-    due_date: "2026-10-09",
-    status: "done",
-    labels: ["l1"],
-  },
-  {
-    id: "t-145",
-    wf: null,
-    title: "Content inventory",
-    owner_id: "u2",
-    due_date: "2026-10-12",
-    status: "done",
-    labels: ["l3"],
-  },
-  {
-    id: "t-149",
-    wf: null,
-    title: "Design tokens defined",
-    owner_id: "u3",
-    due_date: "2026-10-14",
-    status: "done",
-    labels: ["l2"],
-  },
-  {
-    id: "t-151",
-    wf: null,
-    title: "Accessibility audit of current site",
-    owner_id: "u5",
-    due_date: "2026-10-15",
-    status: "done",
-    labels: ["l1"],
-  },
-  {
-    id: "t-153",
-    wf: null,
-    title: "Hosting and CDN decision",
-    owner_id: "u4",
-    due_date: "2026-10-16",
-    status: "done",
-    labels: ["l4"],
-  },
-  {
-    id: "t-157",
-    wf: null,
-    title: "Homepage wireframes",
-    owner_id: "u3",
-    due_date: "2026-10-19",
-    status: "done",
-    labels: ["l2"],
-  },
-  {
-    id: "t-163",
-    wf: null,
-    title: "Typography scale sign-off",
-    owner_id: "u5",
-    due_date: "2026-10-21",
-    status: "done",
-    labels: ["l2"],
-  },
-  {
-    id: "t-132",
-    wf: null,
-    title: "Legal review of product claims",
-    owner_id: "u5",
-    due_date: "2026-10-02",
-    status: "done",
-    labels: ["l3"],
-  },
-  {
-    id: "t-170",
-    wf: null,
-    title: "Migrate blog archive",
-    owner_id: "u4",
-    due_date: "2026-10-23",
-    status: "done",
-    labels: ["l4"],
-  },
-  {
-    id: "t-120",
-    wf: null,
-    title: "Kickoff brief approved",
-    owner_id: "u1",
-    due_date: "2026-09-30",
-    status: "done",
-    labels: [],
-  },
-];
-
-const SEED_PROJECT = {
-  id: "p-12",
-  code: "PRJ-204",
-  name: "Website Redesign",
-  description:
-    "Full redesign of the marketing site, including new information architecture and a shared component library.",
-  created_by: "Priya Nandakumar",
-  created_at: "2026-09-14",
-};
 
 const hexToRgba = (hex, alpha) => {
   const h = hex.replace("#", "");
@@ -431,7 +253,10 @@ function ScreenInner() {
   const [pError, setPError] = React.useState("");
 
   const openProjectModal = () => {
-    setPForm({ name: project ? project.name : "", description: project ? project.description || "" : "" });
+    setPForm({
+      name: project ? project.name : "",
+      description: project ? project.description || "" : "",
+    });
     setPError("");
     setModal("project");
   };
@@ -777,7 +602,8 @@ function ScreenInner() {
 
           <div className="col-span-12 md:col-span-5">
             <p className="tabular-nums" style={{ ...labelStyle, color: MUTED }}>
-              Opened {project.created_at ? longDate(project.created_at.slice(0, 10)) : "—"} · {project.created_by}
+              Opened {project.created_at ? longDate(project.created_at.slice(0, 10)) : "—"} ·{" "}
+              {project.created_by}
             </p>
             <h1
               data-wf="b-0-1"
@@ -1488,9 +1314,7 @@ function ScreenInner() {
             </div>
 
             <form onSubmit={submitProject} className="px-5 py-5">
-              <p style={{ ...labelStyle, color: MUTED }}>
-                Every member can edit this project
-              </p>
+              <p style={{ ...labelStyle, color: MUTED }}>Every member can edit this project</p>
 
               {pError ? (
                 <div
