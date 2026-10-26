@@ -4,7 +4,10 @@ The approved architecture gives this one component every path in the API
 spec (`docs/sdlc/architecture/api/openapi.yaml`). Auth (US-001) is
 implemented: `POST /auth/login` and `GET /auth/me` are real. Invitations
 (US-002) are implemented: `POST /invitations` and `POST /auth/accept-invite`.
-Every other route -- except `/health`, `/auth/login` and
+Projects (US-003-1) are implemented: `GET/POST /projects` and
+`GET/PATCH /projects/{id}` are workspace-wide -- no owner filter or
+per-project role narrows what a signed-in member can see or edit (AC-007,
+AC-008). Every other route -- except `/health`, `/auth/login` and
 `/auth/accept-invite` -- is guarded by the shared `get_current_user`
 dependency (NFR-001). Everything else here is still the typed `StubResponse`
 placeholder until its own ticket implements it.
@@ -14,18 +17,23 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import Invitation, User
+from app.models import Invitation, Project, Task, User
 from app.schemas import (
     AcceptInviteRequest,
     InvitationCreate,
     InvitationOut,
     LoginRequest,
     LoginResponse,
+    ProjectCreate,
+    ProjectOut,
+    ProjectSummary,
+    ProjectUpdate,
     StubResponse,
     UserOut,
 )
@@ -33,6 +41,7 @@ from app.security import create_access_token, hash_password, verify_password
 from app.tasks import send_invitation_email
 
 INVITATION_EXPIRY_DAYS = 7
+TASK_COMPLETE_STATUS = "done"
 
 # Applied to every route except /health, /auth/login and /auth/accept-invite.
 _auth = [Depends(get_current_user)]
@@ -57,6 +66,13 @@ def _as_aware_utc(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
+def _get_project_or_404(db: Session, id: str) -> Project:
+    project = db.get(Project, id)
+    if project is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    return project
+
+
 # ---- auth ------------------------------------------------------------------
 @router.post("/auth/login", response_model=LoginResponse, tags=["auth"])
 async def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:  # noqa: B008
@@ -73,7 +89,8 @@ async def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginRe
 
 @router.post("/auth/accept-invite", response_model=LoginResponse, tags=["auth"])
 async def accept_invite(
-    payload: AcceptInviteRequest, db: Session = Depends(get_db)  # noqa: B008
+    payload: AcceptInviteRequest,
+    db: Session = Depends(get_db),  # noqa: B008
 ) -> LoginResponse:
     """{token, password, name?} -> {access_token, user}. No auth (AC-004).
 
@@ -167,28 +184,92 @@ async def create_invitation(
 
 
 # ---- projects ----------------------------------------------------------------
-@router.get("/projects", response_model=StubResponse, dependencies=_auth, tags=["projects"])
-async def list_projects() -> StubResponse:
-    """-> [{project, task_total, task_complete}]. JWT required."""
-    return _stub("GET /projects")
+@router.get("/projects", response_model=list[ProjectSummary], tags=["projects"])
+async def list_projects(
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> list[ProjectSummary]:
+    """-> [{project, task_total, task_complete}]. JWT required.
+
+    Every project in the workspace, regardless of who created it (AC-007):
+    no owner filter is applied.
+    """
+    projects = db.query(Project).order_by(Project.created_at.desc()).all()
+    counts = dict(
+        db.query(Task.project_id, func.count(Task.id)).group_by(Task.project_id).all()
+    )
+    complete_counts = dict(
+        db.query(Task.project_id, func.count(Task.id))
+        .filter(Task.status == TASK_COMPLETE_STATUS)
+        .group_by(Task.project_id)
+        .all()
+    )
+    return [
+        ProjectSummary(
+            project=ProjectOut.model_validate(project),
+            task_total=counts.get(project.id, 0),
+            task_complete=complete_counts.get(project.id, 0),
+        )
+        for project in projects
+    ]
 
 
-@router.post("/projects", response_model=StubResponse, dependencies=_auth, tags=["projects"])
-async def create_project() -> StubResponse:
-    """{name, description?} -> {project}. JWT required."""
-    return _stub("POST /projects")
+@router.post(
+    "/projects",
+    response_model=ProjectOut,
+    status_code=status.HTTP_201_CREATED,
+    tags=["projects"],
+)
+async def create_project(
+    payload: ProjectCreate,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> ProjectOut:
+    """{name, description?} -> {project}. JWT required; records created_by."""
+    project = Project(
+        name=payload.name,
+        description=payload.description,
+        created_by=current_user.id,
+    )
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return ProjectOut.model_validate(project)
 
 
-@router.get("/projects/{id}", response_model=StubResponse, dependencies=_auth, tags=["projects"])
-async def get_project(id: str) -> StubResponse:
-    """-> {project}. JWT required."""
-    return _stub(f"GET /projects/{id}")
+@router.get("/projects/{id}", response_model=ProjectOut, tags=["projects"])
+async def get_project(
+    id: str,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> ProjectOut:
+    """-> {project}. JWT required; any signed-in member, 404 for an unknown id."""
+    project = _get_project_or_404(db, id)
+    return ProjectOut.model_validate(project)
 
 
-@router.patch("/projects/{id}", response_model=StubResponse, dependencies=_auth, tags=["projects"])
-async def update_project(id: str) -> StubResponse:
-    """{name?, description?} -> {project}. JWT required."""
-    return _stub(f"PATCH /projects/{id}")
+@router.patch("/projects/{id}", response_model=ProjectOut, tags=["projects"])
+async def update_project(
+    id: str,
+    payload: ProjectUpdate,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> ProjectOut:
+    """{name?, description?} -> {project}. JWT required.
+
+    Any signed-in member may save edits, including one who did not create
+    the project (AC-008): there is no ownership check.
+    """
+    project = _get_project_or_404(db, id)
+    if payload.name is not None:
+        project.name = payload.name
+    if payload.description is not None:
+        project.description = payload.description
+    project.updated_at = datetime.now(UTC)
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return ProjectOut.model_validate(project)
 
 
 @router.get(

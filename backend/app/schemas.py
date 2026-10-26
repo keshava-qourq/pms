@@ -75,3 +75,40 @@ class AcceptInviteRequest(BaseModel):
     token: str
     password: str
     name: str | None = None
+
+
+class ProjectCreate(BaseModel):
+    """{name, description?} as POST /projects expects."""
+
+    name: str
+    description: str | None = None
+
+
+class ProjectUpdate(BaseModel):
+    """{name?, description?} as PATCH /projects/{id} expects."""
+
+    name: str | None = None
+    description: str | None = None
+
+
+class ProjectOut(BaseModel):
+    """The project record returned by the /projects routes."""
+
+    id: str
+    name: str
+    description: str | None = None
+    status: str
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ProjectSummary(BaseModel):
+    """What GET /projects returns: a project plus its task counts."""
+
+    project: ProjectOut
+    task_total: int
+    task_complete: int

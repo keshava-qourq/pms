@@ -6,11 +6,47 @@ import * as UI from "@/lib/ui";
 import { Icons } from "@/lib/icons";
 import { brand } from "@/lib/brand";
 import { useNavigate } from "@/lib/navigate";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { getSelectedProjectId } from "@/lib/selectedProject";
+import {
+  useProject,
+  useProjectTasks,
+  useUpdateProject,
+  useUpdateTask,
+  useCreateTask,
+} from "@/lib/projects";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { Button, Input, Textarea, Label, Select, Checkbox, Badge, Table, THead, TBody, TR, TH, TD, Empty } = UI;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { Plus, Check, X, ChevronRight, ChevronLeft, Clock, Edit, ArrowLeft, ArrowRight, AlertCircle, CheckCircle } = Icons;
+const {
+  Button,
+  Input,
+  Textarea,
+  Label,
+  Select,
+  Checkbox,
+  Badge,
+  Table,
+  THead,
+  TBody,
+  TR,
+  TH,
+  TD,
+  Empty,
+} = UI;
+
+const {
+  Plus,
+  Check,
+  X,
+  ChevronRight,
+  ChevronLeft,
+  Clock,
+  Edit,
+  ArrowLeft,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle,
+} = Icons;
 
 const TODAY = "2026-10-26";
 
@@ -40,24 +76,168 @@ const LABELS = [
 ];
 
 const SEED_TASKS = [
-  { id: "t-204", wf: "i-3-0-0", title: "Audit current sitemap", owner_id: "u1", due_date: "2026-11-03", status: "todo", labels: ["l1"] },
-  { id: "t-207", wf: "i-3-0-1", title: "Draft new nav structure", owner_id: "u2", due_date: "2026-11-06", status: "todo", labels: ["l2"] },
-  { id: "t-211", wf: "i-3-0-2", title: "Collect brand assets", owner_id: null, due_date: "2026-11-10", status: "todo", labels: [] },
-  { id: "t-213", wf: null, title: "Set up 301 redirect map", owner_id: "u4", due_date: "2026-10-24", status: "todo", labels: ["l6", "l5"] },
-  { id: "t-198", wf: "i-3-1-0", title: "Build component library", owner_id: "u3", due_date: "2026-11-12", status: "in_progress", labels: ["l2", "l4"] },
-  { id: "t-201", wf: "i-3-1-1", title: "Rewrite pricing copy", owner_id: "u2", due_date: "2026-11-05", status: "in_progress", labels: ["l3"] },
-  { id: "t-160", wf: "i-3-2-0", title: "Stakeholder interviews", owner_id: "u1", due_date: "2026-10-20", status: "done", labels: ["l1"] },
-  { id: "t-166", wf: "i-3-2-1", title: "Analytics baseline", owner_id: "u3", due_date: "2026-10-22", status: "done", labels: [] },
-  { id: "t-141", wf: null, title: "Competitor teardown", owner_id: "u1", due_date: "2026-10-09", status: "done", labels: ["l1"] },
-  { id: "t-145", wf: null, title: "Content inventory", owner_id: "u2", due_date: "2026-10-12", status: "done", labels: ["l3"] },
-  { id: "t-149", wf: null, title: "Design tokens defined", owner_id: "u3", due_date: "2026-10-14", status: "done", labels: ["l2"] },
-  { id: "t-151", wf: null, title: "Accessibility audit of current site", owner_id: "u5", due_date: "2026-10-15", status: "done", labels: ["l1"] },
-  { id: "t-153", wf: null, title: "Hosting and CDN decision", owner_id: "u4", due_date: "2026-10-16", status: "done", labels: ["l4"] },
-  { id: "t-157", wf: null, title: "Homepage wireframes", owner_id: "u3", due_date: "2026-10-19", status: "done", labels: ["l2"] },
-  { id: "t-163", wf: null, title: "Typography scale sign-off", owner_id: "u5", due_date: "2026-10-21", status: "done", labels: ["l2"] },
-  { id: "t-132", wf: null, title: "Legal review of product claims", owner_id: "u5", due_date: "2026-10-02", status: "done", labels: ["l3"] },
-  { id: "t-170", wf: null, title: "Migrate blog archive", owner_id: "u4", due_date: "2026-10-23", status: "done", labels: ["l4"] },
-  { id: "t-120", wf: null, title: "Kickoff brief approved", owner_id: "u1", due_date: "2026-09-30", status: "done", labels: [] },
+  {
+    id: "t-204",
+    wf: "i-3-0-0",
+    title: "Audit current sitemap",
+    owner_id: "u1",
+    due_date: "2026-11-03",
+    status: "todo",
+    labels: ["l1"],
+  },
+  {
+    id: "t-207",
+    wf: "i-3-0-1",
+    title: "Draft new nav structure",
+    owner_id: "u2",
+    due_date: "2026-11-06",
+    status: "todo",
+    labels: ["l2"],
+  },
+  {
+    id: "t-211",
+    wf: "i-3-0-2",
+    title: "Collect brand assets",
+    owner_id: null,
+    due_date: "2026-11-10",
+    status: "todo",
+    labels: [],
+  },
+  {
+    id: "t-213",
+    wf: null,
+    title: "Set up 301 redirect map",
+    owner_id: "u4",
+    due_date: "2026-10-24",
+    status: "todo",
+    labels: ["l6", "l5"],
+  },
+  {
+    id: "t-198",
+    wf: "i-3-1-0",
+    title: "Build component library",
+    owner_id: "u3",
+    due_date: "2026-11-12",
+    status: "in_progress",
+    labels: ["l2", "l4"],
+  },
+  {
+    id: "t-201",
+    wf: "i-3-1-1",
+    title: "Rewrite pricing copy",
+    owner_id: "u2",
+    due_date: "2026-11-05",
+    status: "in_progress",
+    labels: ["l3"],
+  },
+  {
+    id: "t-160",
+    wf: "i-3-2-0",
+    title: "Stakeholder interviews",
+    owner_id: "u1",
+    due_date: "2026-10-20",
+    status: "done",
+    labels: ["l1"],
+  },
+  {
+    id: "t-166",
+    wf: "i-3-2-1",
+    title: "Analytics baseline",
+    owner_id: "u3",
+    due_date: "2026-10-22",
+    status: "done",
+    labels: [],
+  },
+  {
+    id: "t-141",
+    wf: null,
+    title: "Competitor teardown",
+    owner_id: "u1",
+    due_date: "2026-10-09",
+    status: "done",
+    labels: ["l1"],
+  },
+  {
+    id: "t-145",
+    wf: null,
+    title: "Content inventory",
+    owner_id: "u2",
+    due_date: "2026-10-12",
+    status: "done",
+    labels: ["l3"],
+  },
+  {
+    id: "t-149",
+    wf: null,
+    title: "Design tokens defined",
+    owner_id: "u3",
+    due_date: "2026-10-14",
+    status: "done",
+    labels: ["l2"],
+  },
+  {
+    id: "t-151",
+    wf: null,
+    title: "Accessibility audit of current site",
+    owner_id: "u5",
+    due_date: "2026-10-15",
+    status: "done",
+    labels: ["l1"],
+  },
+  {
+    id: "t-153",
+    wf: null,
+    title: "Hosting and CDN decision",
+    owner_id: "u4",
+    due_date: "2026-10-16",
+    status: "done",
+    labels: ["l4"],
+  },
+  {
+    id: "t-157",
+    wf: null,
+    title: "Homepage wireframes",
+    owner_id: "u3",
+    due_date: "2026-10-19",
+    status: "done",
+    labels: ["l2"],
+  },
+  {
+    id: "t-163",
+    wf: null,
+    title: "Typography scale sign-off",
+    owner_id: "u5",
+    due_date: "2026-10-21",
+    status: "done",
+    labels: ["l2"],
+  },
+  {
+    id: "t-132",
+    wf: null,
+    title: "Legal review of product claims",
+    owner_id: "u5",
+    due_date: "2026-10-02",
+    status: "done",
+    labels: ["l3"],
+  },
+  {
+    id: "t-170",
+    wf: null,
+    title: "Migrate blog archive",
+    owner_id: "u4",
+    due_date: "2026-10-23",
+    status: "done",
+    labels: ["l4"],
+  },
+  {
+    id: "t-120",
+    wf: null,
+    title: "Kickoff brief approved",
+    owner_id: "u1",
+    due_date: "2026-09-30",
+    status: "done",
+    labels: [],
+  },
 ];
 
 const SEED_PROJECT = {
@@ -72,7 +252,15 @@ const SEED_PROJECT = {
 
 const hexToRgba = (hex, alpha) => {
   const h = hex.replace("#", "");
-  const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
+  const n = parseInt(
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h,
+    16,
+  );
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 };
 
@@ -98,7 +286,7 @@ const ownerShort = (id) => {
 
 const labelById = (id) => LABELS.find((l) => l.id === id);
 
-export default function Screen() {
+function ScreenInner() {
   const navigate = useNavigate();
   const INK = brand.primaryColor;
   const ACCENT = brand.accentColor;
@@ -106,12 +294,24 @@ export default function Screen() {
   const RULE = hexToRgba(INK, 0.14);
   const RADIUS = brand.radius;
 
-  const [project, setProject] = React.useState(SEED_PROJECT);
-  const [tasks, setTasks] = React.useState(SEED_TASKS);
+  const [projectId] = React.useState(() => getSelectedProjectId());
+  const projectQuery = useProject(projectId);
+  const tasksQuery = useProjectTasks(projectId);
+  const updateProjectMut = useUpdateProject(projectId);
+  const updateTaskMut = useUpdateTask(projectId);
+  const createTaskMut = useCreateTask(projectId);
+  const project = projectQuery.data || null;
+  const tasks = React.useMemo(
+    () => (tasksQuery.data || []).map((t) => ({ ...t, labels: t.labels || [], wf: null })),
+    [tasksQuery.data],
+  );
   const [view, setView] = React.useState("board");
   const [modal, setModal] = React.useState(null); // 'task' | 'project' | null
   const [flashId, setFlashId] = React.useState(null);
-  const [saveState, setSaveState] = React.useState({ mode: "synced", message: "All changes saved · synced 09:41" });
+  const [saveState, setSaveState] = React.useState({
+    mode: "synced",
+    message: "All changes saved · synced 09:41",
+  });
   const [dragId, setDragId] = React.useState(null);
   const [dragCol, setDragCol] = React.useState(null);
 
@@ -133,18 +333,18 @@ export default function Screen() {
 
   /* ---------- task mutations (shared by board + list) ---------- */
   const setStatus = (id, status) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
     const t = tasks.find((x) => x.id === id);
     const label = STATUSES.find((s) => s.key === status).label;
     setFlashId(id);
     later(() => setFlashId(null), 1700);
     announce(`“${t ? t.title : "Task"}” moved to ${label}`);
+    updateTaskMut.mutate({ id, status });
   };
 
   const setOwner = (id, owner_id) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, owner_id: owner_id || null } : t)));
     const t = tasks.find((x) => x.id === id);
     announce(`“${t ? t.title : "Task"}” assigned to ${ownerName(owner_id)}`);
+    updateTaskMut.mutate({ id, owner_id: owner_id || null });
   };
 
   /* ---------- modals ---------- */
@@ -193,7 +393,7 @@ export default function Screen() {
     setModal("task");
   };
 
-  const submitTask = (e) => {
+  const submitTask = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) {
       setFormError("A task needs a title before it can join the board.");
@@ -201,56 +401,60 @@ export default function Screen() {
       return;
     }
     setCreating(true);
-    later(() => {
-      const id = "t-" + Math.floor(220 + Math.random() * 60);
-      const created = {
-        id,
-        wf: null,
+    try {
+      const created = await createTaskMut.mutateAsync({
         title: form.title.trim(),
-        description: form.description.trim(),
+        description: form.description.trim() || undefined,
         owner_id: form.owner_id || null,
         due_date: form.due_date,
         status: form.status,
-        labels: form.labels,
-      };
-      setTasks((prev) => [created, ...prev]);
+      });
       setCreating(false);
-      setFlashId(id);
+      setFlashId(created.id);
       later(() => setFlashId(null), 1700);
       setSaveState({
         mode: "saved",
         message: `“${created.title}” added to ${STATUSES.find((s) => s.key === created.status).label}`,
       });
       closeModal();
-    }, 520);
+    } catch {
+      setCreating(false);
+      setFormError("We couldn't create the task. Try again.");
+    }
   };
 
   /* ---------- edit project form ---------- */
-  const [pForm, setPForm] = React.useState({ name: project.name, description: project.description });
+  const [pForm, setPForm] = React.useState({
+    name: project ? project.name : "",
+    description: project ? project.description || "" : "",
+  });
   const [pError, setPError] = React.useState("");
-  const [pSaving, setPSaving] = React.useState(false);
 
   const openProjectModal = () => {
-    setPForm({ name: project.name, description: project.description });
+    setPForm({ name: project ? project.name : "", description: project ? project.description || "" : "" });
     setPError("");
     setModal("project");
   };
 
-  const submitProject = (e) => {
+  const submitProject = async (e) => {
     e.preventDefault();
     if (!pForm.name.trim()) {
       setPError("Give the project a name so the team can find it.");
       if (firstFieldRef.current) firstFieldRef.current.focus();
       return;
     }
-    setPSaving(true);
-    later(() => {
-      setProject((p) => ({ ...p, name: pForm.name.trim(), description: pForm.description.trim() }));
-      setPSaving(false);
+    try {
+      await updateProjectMut.mutateAsync({
+        name: pForm.name.trim(),
+        description: pForm.description.trim(),
+      });
       setSaveState({ mode: "saved", message: "Project details saved for the whole team" });
       closeModal();
-    }, 480);
+    } catch {
+      setPError("We couldn't save those changes. Try again.");
+    }
   };
+  const pSaving = updateProjectMut.isPending;
 
   /* ---------- styles ---------- */
   const css = `
@@ -269,7 +473,12 @@ export default function Screen() {
     }
   `;
 
-  const labelStyle = { fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 };
+  const labelStyle = {
+    fontSize: 10,
+    letterSpacing: "0.14em",
+    textTransform: "uppercase",
+    fontWeight: 700,
+  };
   const primaryBtn = {
     backgroundColor: INK,
     color: brand.backgroundColor,
@@ -286,7 +495,12 @@ export default function Screen() {
     fontWeight: 700,
     letterSpacing: "0.02em",
   };
-  const fieldStyle = { border: `2px solid ${INK}`, borderRadius: RADIUS, backgroundColor: brand.backgroundColor, color: INK };
+  const fieldStyle = {
+    border: `2px solid ${INK}`,
+    borderRadius: RADIUS,
+    backgroundColor: brand.backgroundColor,
+    color: INK,
+  };
   const miniSelect = {
     border: `1px solid ${hexToRgba(INK, 0.35)}`,
     borderRadius: RADIUS,
@@ -400,7 +614,11 @@ export default function Screen() {
               >
                 <div className="flex items-start gap-2">
                   {t.status === "done" ? (
-                    <Check aria-hidden="true" className="mt-[2px] h-3.5 w-3.5 shrink-0" style={{ color: MUTED }} />
+                    <Check
+                      aria-hidden="true"
+                      className="mt-[2px] h-3.5 w-3.5 shrink-0"
+                      style={{ color: MUTED }}
+                    />
                   ) : null}
                   <button
                     type="button"
@@ -498,6 +716,36 @@ export default function Screen() {
     }
   };
 
+  if (!projectId) {
+    return (
+      <div className="w-full p-10">
+        <Empty
+          title="No project selected"
+          description="Open a project from the projects overview to see its board."
+        />
+      </div>
+    );
+  }
+
+  if (projectQuery.isLoading || tasksQuery.isLoading) {
+    return (
+      <div className="w-full p-10" role="status" aria-live="polite">
+        Loading project…
+      </div>
+    );
+  }
+
+  if (projectQuery.isError || !project) {
+    return (
+      <div className="w-full p-10">
+        <Empty
+          title="Couldn't load this project"
+          description="Check your connection and try again."
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className="w-full"
@@ -514,7 +762,13 @@ export default function Screen() {
               data-wf="b-0-0"
               onClick={() => navigate("projects")}
               className="obs-focus inline-flex items-center gap-1.5"
-              style={{ ...labelStyle, color: MUTED, background: "none", border: "none", padding: "4px 0" }}
+              style={{
+                ...labelStyle,
+                color: MUTED,
+                background: "none",
+                border: "none",
+                padding: "4px 0",
+              }}
             >
               <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
               All projects
@@ -523,7 +777,7 @@ export default function Screen() {
 
           <div className="col-span-12 md:col-span-5">
             <p className="tabular-nums" style={{ ...labelStyle, color: MUTED }}>
-              {project.code} · opened {longDate(project.created_at)} · {project.created_by}
+              Opened {project.created_at ? longDate(project.created_at.slice(0, 10)) : "—"} · {project.created_by}
             </p>
             <h1
               data-wf="b-0-1"
@@ -569,7 +823,11 @@ export default function Screen() {
         </div>
 
         {/* ---------- Row 2 ---------- */}
-        <section data-wf="b-1-0" className="mt-6" style={{ borderTop: `2px solid ${INK}`, paddingTop: 16 }}>
+        <section
+          data-wf="b-1-0"
+          className="mt-6"
+          style={{ borderTop: `2px solid ${INK}`, paddingTop: 16 }}
+        >
           <div className="grid grid-cols-12 gap-x-6 gap-y-4">
             <p
               className="col-span-12 lg:col-span-7"
@@ -589,7 +847,7 @@ export default function Screen() {
                   .sort(
                     (a, b) =>
                       STATUSES.findIndex((s) => s.key === b.status) -
-                      STATUSES.findIndex((s) => s.key === a.status)
+                      STATUSES.findIndex((s) => s.key === a.status),
                   )
                   .map((t) => (
                     <span
@@ -597,7 +855,11 @@ export default function Screen() {
                       className="h-2 flex-1"
                       style={{
                         backgroundColor:
-                          t.status === "done" ? INK : t.status === "in_progress" ? ACCENT : hexToRgba(INK, 0.14),
+                          t.status === "done"
+                            ? INK
+                            : t.status === "in_progress"
+                              ? ACCENT
+                              : hexToRgba(INK, 0.14),
                         transition: "background-color .2s ease",
                       }}
                     />
@@ -606,8 +868,10 @@ export default function Screen() {
               <div className="mt-2 flex items-center justify-between gap-3">
                 <p className="tabular-nums" style={{ ...labelStyle, color: MUTED }}>
                   {tasks.filter((t) => t.status === "todo").length} to do ·{" "}
-                  <span style={{ color: ACCENT }}>{tasks.filter((t) => t.status === "in_progress").length} in progress</span> ·{" "}
-                  {doneCount} done
+                  <span style={{ color: ACCENT }}>
+                    {tasks.filter((t) => t.status === "in_progress").length} in progress
+                  </span>{" "}
+                  · {doneCount} done
                 </p>
                 <p
                   role="status"
@@ -660,7 +924,10 @@ export default function Screen() {
                   }}
                 >
                   {t.label}
-                  <span className="tabular-nums" style={{ marginLeft: 6, color: MUTED, fontWeight: 400 }}>
+                  <span
+                    className="tabular-nums"
+                    style={{ marginLeft: 6, color: MUTED, fontWeight: 400 }}
+                  >
                     {t.key === "board" ? "3 columns" : `${total}`}
                   </span>
                 </button>
@@ -698,7 +965,8 @@ export default function Screen() {
           ) : null}
           {view === "board" ? (
             <p className="mt-2" style={{ fontSize: 11, color: MUTED }}>
-              Drag a card to another column, or focus a card and use its arrow buttons to change status.
+              Drag a card to another column, or focus a card and use its arrow buttons to change
+              status.
             </p>
           ) : null}
         </div>
@@ -716,11 +984,18 @@ export default function Screen() {
               <div className="mb-2 flex items-baseline justify-between">
                 <h2
                   className="tabular-nums"
-                  style={{ fontFamily: brand.fontHeading, fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}
+                  style={{
+                    fontFamily: brand.fontHeading,
+                    fontSize: 18,
+                    fontWeight: 700,
+                    letterSpacing: "-0.01em",
+                  }}
                 >
                   Tasks ({total})
                 </h2>
-                <p style={{ ...labelStyle, color: MUTED }}>Status and owner are editable in place</p>
+                <p style={{ ...labelStyle, color: MUTED }}>
+                  Status and owner are editable in place
+                </p>
               </div>
 
               {total === 0 ? (
@@ -731,23 +1006,54 @@ export default function Screen() {
                   />
                 </div>
               ) : (
-                <div className="overflow-x-auto" style={{ border: `2px solid ${INK}`, borderRadius: RADIUS }}>
-                  <Table className="w-full min-w-[760px]" style={{ borderCollapse: "collapse", fontVariantNumeric: "tabular-nums" }}>
+                <div
+                  className="overflow-x-auto"
+                  style={{ border: `2px solid ${INK}`, borderRadius: RADIUS }}
+                >
+                  <Table
+                    className="w-full min-w-[760px]"
+                    style={{ borderCollapse: "collapse", fontVariantNumeric: "tabular-nums" }}
+                  >
                     <THead>
                       <TR style={{ borderBottom: `2px solid ${INK}` }}>
-                        <TH data-wf="i-4-0-0" scope="col" className="px-3 py-2 text-left" style={labelStyle}>
+                        <TH
+                          data-wf="i-4-0-0"
+                          scope="col"
+                          className="px-3 py-2 text-left"
+                          style={labelStyle}
+                        >
                           Title
                         </TH>
-                        <TH data-wf="i-4-0-1" scope="col" className="px-3 py-2 text-left" style={labelStyle}>
+                        <TH
+                          data-wf="i-4-0-1"
+                          scope="col"
+                          className="px-3 py-2 text-left"
+                          style={labelStyle}
+                        >
                           Owner
                         </TH>
-                        <TH data-wf="i-4-0-2" scope="col" className="px-3 py-2 text-left" style={labelStyle}>
+                        <TH
+                          data-wf="i-4-0-2"
+                          scope="col"
+                          className="px-3 py-2 text-left"
+                          style={labelStyle}
+                        >
                           Due date
                         </TH>
-                        <TH data-wf="i-4-0-3" scope="col" className="px-3 py-2 text-left" style={labelStyle}>
+                        <TH
+                          data-wf="i-4-0-3"
+                          scope="col"
+                          className="px-3 py-2 text-left"
+                          style={labelStyle}
+                        >
                           Status
                         </TH>
-                        <TH data-wf="i-4-0-4" scope="col" className="px-3 py-2 text-left" style={labelStyle}>
+                        <TH
+                          data-wf="i-4-0-4"
+                          scope="col"
+                          className="px-3 py-2 text-left"
+                          style={labelStyle}
+                        >
                           Labels
                         </TH>
                       </TR>
@@ -779,12 +1085,18 @@ export default function Screen() {
                             >
                               {t.title}
                             </button>
-                            <span className="tabular-nums block" style={{ fontSize: 11, color: MUTED }}>
+                            <span
+                              className="tabular-nums block"
+                              style={{ fontSize: 11, color: MUTED }}
+                            >
                               {t.id.toUpperCase()}
                             </span>
                           </TD>
 
-                          <TD className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                          <TD
+                            className="px-3 py-2 align-middle"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Label htmlFor={`owner-${t.id}`} className="sr-only">
                               Owner for {t.title}
                             </Label>
@@ -804,7 +1116,10 @@ export default function Screen() {
                             </Select>
                           </TD>
 
-                          <TD className="px-3 py-2 align-middle tabular-nums" style={{ fontSize: 12 }}>
+                          <TD
+                            className="px-3 py-2 align-middle tabular-nums"
+                            style={{ fontSize: 12 }}
+                          >
                             {longDate(t.due_date)}
                             {overdue(t) ? (
                               <span
@@ -817,7 +1132,10 @@ export default function Screen() {
                             ) : null}
                           </TD>
 
-                          <TD className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                          <TD
+                            className="px-3 py-2 align-middle"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Label htmlFor={`status-${t.id}`} className="sr-only">
                               Status for {t.title}
                             </Label>
@@ -856,7 +1174,8 @@ export default function Screen() {
 
               {total > 0 ? (
                 <p className="mt-2 tabular-nums" style={{ fontSize: 11, color: MUTED }}>
-                  {total} tasks · {doneCount} complete · {tasks.filter((t) => overdue(t)).length} overdue · updated in both views
+                  {total} tasks · {doneCount} complete · {tasks.filter((t) => overdue(t)).length}{" "}
+                  overdue · updated in both views
                 </p>
               ) : null}
             </section>
@@ -879,10 +1198,25 @@ export default function Screen() {
             aria-modal="true"
             aria-labelledby="new-task-title"
             className="obs-rise w-full max-w-[560px]"
-            style={{ backgroundColor: brand.backgroundColor, border: `2px solid ${INK}`, borderRadius: RADIUS }}
+            style={{
+              backgroundColor: brand.backgroundColor,
+              border: `2px solid ${INK}`,
+              borderRadius: RADIUS,
+            }}
           >
-            <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `2px solid ${INK}` }}>
-              <h2 id="new-task-title" style={{ fontFamily: brand.fontHeading, fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>
+            <div
+              className="flex items-center justify-between px-5 py-3"
+              style={{ borderBottom: `2px solid ${INK}` }}
+            >
+              <h2
+                id="new-task-title"
+                style={{
+                  fontFamily: brand.fontHeading,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  letterSpacing: "-0.01em",
+                }}
+              >
                 New task
               </h2>
               <button
@@ -890,7 +1224,12 @@ export default function Screen() {
                 aria-label="Close new task form"
                 onClick={closeModal}
                 className="obs-focus flex h-8 w-8 items-center justify-center"
-                style={{ border: `1px solid ${hexToRgba(INK, 0.35)}`, borderRadius: RADIUS, background: "none", color: INK }}
+                style={{
+                  border: `1px solid ${hexToRgba(INK, 0.35)}`,
+                  borderRadius: RADIUS,
+                  background: "none",
+                  color: INK,
+                }}
               >
                 <X aria-hidden="true" className="h-4 w-4" />
               </button>
@@ -903,7 +1242,13 @@ export default function Screen() {
                 <div
                   role="alert"
                   className="mt-3 flex items-start gap-2 px-3 py-2"
-                  style={{ border: `2px solid ${ACCENT}`, borderRadius: RADIUS, color: ACCENT, fontSize: 12, lineHeight: 1.5 }}
+                  style={{
+                    border: `2px solid ${ACCENT}`,
+                    borderRadius: RADIUS,
+                    color: ACCENT,
+                    fontSize: 12,
+                    lineHeight: 1.5,
+                  }}
                 >
                   <AlertCircle aria-hidden="true" className="mt-[1px] h-4 w-4 shrink-0" />
                   <span>{formError} Everything else you typed is still here.</span>
@@ -911,7 +1256,10 @@ export default function Screen() {
               ) : null}
 
               <div className="mt-4">
-                <Label htmlFor="task-title" style={{ ...labelStyle, display: "block", marginBottom: 6 }}>
+                <Label
+                  htmlFor="task-title"
+                  style={{ ...labelStyle, display: "block", marginBottom: 6 }}
+                >
                   Title <span style={{ color: ACCENT }}>(required)</span>
                 </Label>
                 <Input
@@ -937,7 +1285,10 @@ export default function Screen() {
               </div>
 
               <div className="mt-4">
-                <Label htmlFor="task-desc" style={{ ...labelStyle, display: "block", marginBottom: 6 }}>
+                <Label
+                  htmlFor="task-desc"
+                  style={{ ...labelStyle, display: "block", marginBottom: 6 }}
+                >
                   Description
                 </Label>
                 <Textarea
@@ -954,7 +1305,10 @@ export default function Screen() {
 
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
-                  <Label htmlFor="task-owner" style={{ ...labelStyle, display: "block", marginBottom: 6 }}>
+                  <Label
+                    htmlFor="task-owner"
+                    style={{ ...labelStyle, display: "block", marginBottom: 6 }}
+                  >
                     Owner
                   </Label>
                   <Select
@@ -974,7 +1328,10 @@ export default function Screen() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="task-due" style={{ ...labelStyle, display: "block", marginBottom: 6 }}>
+                  <Label
+                    htmlFor="task-due"
+                    style={{ ...labelStyle, display: "block", marginBottom: 6 }}
+                  >
                     Due date
                   </Label>
                   <Input
@@ -988,7 +1345,10 @@ export default function Screen() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="task-status" style={{ ...labelStyle, display: "block", marginBottom: 6 }}>
+                  <Label
+                    htmlFor="task-status"
+                    style={{ ...labelStyle, display: "block", marginBottom: 6 }}
+                  >
                     Status
                   </Label>
                   <Select
@@ -1044,7 +1404,10 @@ export default function Screen() {
                 </p>
               </fieldset>
 
-              <div className="mt-6 flex items-center justify-end gap-3" style={{ borderTop: `2px solid ${INK}`, paddingTop: 16 }}>
+              <div
+                className="mt-6 flex items-center justify-end gap-3"
+                style={{ borderTop: `2px solid ${INK}`, paddingTop: 16 }}
+              >
                 <Button
                   type="button"
                   onClick={closeModal}
@@ -1058,7 +1421,11 @@ export default function Screen() {
                   type="submit"
                   disabled={creating}
                   className="obs-focus h-10 px-5 text-[12px] uppercase"
-                  style={{ ...primaryBtn, opacity: creating ? 0.6 : 1, cursor: creating ? "wait" : "pointer" }}
+                  style={{
+                    ...primaryBtn,
+                    opacity: creating ? 0.6 : 1,
+                    cursor: creating ? "wait" : "pointer",
+                  }}
                 >
                   {creating ? "Creating…" : "Create task"}
                 </Button>
@@ -1083,10 +1450,25 @@ export default function Screen() {
             aria-modal="true"
             aria-labelledby="edit-project-title"
             className="obs-rise w-full max-w-[560px]"
-            style={{ backgroundColor: brand.backgroundColor, border: `2px solid ${INK}`, borderRadius: RADIUS }}
+            style={{
+              backgroundColor: brand.backgroundColor,
+              border: `2px solid ${INK}`,
+              borderRadius: RADIUS,
+            }}
           >
-            <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `2px solid ${INK}` }}>
-              <h2 id="edit-project-title" style={{ fontFamily: brand.fontHeading, fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>
+            <div
+              className="flex items-center justify-between px-5 py-3"
+              style={{ borderBottom: `2px solid ${INK}` }}
+            >
+              <h2
+                id="edit-project-title"
+                style={{
+                  fontFamily: brand.fontHeading,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  letterSpacing: "-0.01em",
+                }}
+              >
                 Edit project details
               </h2>
               <button
@@ -1094,7 +1476,12 @@ export default function Screen() {
                 aria-label="Close project details form"
                 onClick={closeModal}
                 className="obs-focus flex h-8 w-8 items-center justify-center"
-                style={{ border: `1px solid ${hexToRgba(INK, 0.35)}`, borderRadius: RADIUS, background: "none", color: INK }}
+                style={{
+                  border: `1px solid ${hexToRgba(INK, 0.35)}`,
+                  borderRadius: RADIUS,
+                  background: "none",
+                  color: INK,
+                }}
               >
                 <X aria-hidden="true" className="h-4 w-4" />
               </button>
@@ -1102,14 +1489,20 @@ export default function Screen() {
 
             <form onSubmit={submitProject} className="px-5 py-5">
               <p style={{ ...labelStyle, color: MUTED }}>
-                {project.code} · every member can edit this project
+                Every member can edit this project
               </p>
 
               {pError ? (
                 <div
                   role="alert"
                   className="mt-3 flex items-start gap-2 px-3 py-2"
-                  style={{ border: `2px solid ${ACCENT}`, borderRadius: RADIUS, color: ACCENT, fontSize: 12, lineHeight: 1.5 }}
+                  style={{
+                    border: `2px solid ${ACCENT}`,
+                    borderRadius: RADIUS,
+                    color: ACCENT,
+                    fontSize: 12,
+                    lineHeight: 1.5,
+                  }}
                 >
                   <AlertCircle aria-hidden="true" className="mt-[1px] h-4 w-4 shrink-0" />
                   <span>{pError}</span>
@@ -1117,7 +1510,10 @@ export default function Screen() {
               ) : null}
 
               <div className="mt-4">
-                <Label htmlFor="project-name" style={{ ...labelStyle, display: "block", marginBottom: 6 }}>
+                <Label
+                  htmlFor="project-name"
+                  style={{ ...labelStyle, display: "block", marginBottom: 6 }}
+                >
                   Name <span style={{ color: ACCENT }}>(required)</span>
                 </Label>
                 <Input
@@ -1136,7 +1532,10 @@ export default function Screen() {
               </div>
 
               <div className="mt-4">
-                <Label htmlFor="project-desc" style={{ ...labelStyle, display: "block", marginBottom: 6 }}>
+                <Label
+                  htmlFor="project-desc"
+                  style={{ ...labelStyle, display: "block", marginBottom: 6 }}
+                >
                   Description
                 </Label>
                 <Textarea
@@ -1153,7 +1552,10 @@ export default function Screen() {
                 </p>
               </div>
 
-              <div className="mt-6 flex items-center justify-end gap-3" style={{ borderTop: `2px solid ${INK}`, paddingTop: 16 }}>
+              <div
+                className="mt-6 flex items-center justify-end gap-3"
+                style={{ borderTop: `2px solid ${INK}`, paddingTop: 16 }}
+              >
                 <Button
                   type="button"
                   onClick={closeModal}
@@ -1167,7 +1569,11 @@ export default function Screen() {
                   type="submit"
                   disabled={pSaving}
                   className="obs-focus h-10 px-5 text-[12px] uppercase"
-                  style={{ ...primaryBtn, opacity: pSaving ? 0.6 : 1, cursor: pSaving ? "wait" : "pointer" }}
+                  style={{
+                    ...primaryBtn,
+                    opacity: pSaving ? 0.6 : 1,
+                    cursor: pSaving ? "wait" : "pointer",
+                  }}
                 >
                   {pSaving ? "Saving…" : "Save changes"}
                 </Button>
@@ -1177,5 +1583,13 @@ export default function Screen() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+export default function Screen() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ScreenInner />
+    </QueryClientProvider>
   );
 }
