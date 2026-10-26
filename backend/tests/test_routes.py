@@ -1,11 +1,12 @@
-"""The stub routes the `backend` component's router registers.
+"""The routes the `backend` component's router registers.
 
-This does not test behaviour -- every handler returns the same typed
-placeholder -- it tests that the scaffold's structure matches the approved
-API spec: every path and method in
+Checks that every path and method in
 `docs/sdlc/architecture/api/openapi.yaml` is actually wired up and callable,
-so a development ticket can replace one stub at a time without first
-discovering the route was never registered.
+plus the structural guarantee from NFR-001: every route except /health,
+/auth/login and /auth/accept-invite requires a valid bearer token. Behaviour
+of each individual stub route still belongs to its own ticket; auth
+(/auth/login, /auth/me) is implemented here (US-001) and tested in
+tests/integration/test_auth.py.
 """
 
 from fastapi.testclient import TestClient
@@ -42,22 +43,20 @@ def test_every_api_spec_path_is_registered() -> None:
         assert methods.issubset(paths[path].keys()), f"{path} is missing a method"
 
 
-def test_a_public_stub_route_needs_no_token() -> None:
-    response = client.post("/auth/login", json={})
-    assert response.status_code == 200
-    assert response.json()["endpoint"] == "POST /auth/login"
+def test_ac_public_auth_login_route_needs_no_token() -> None:
+    # No Authorization header, unknown credentials: reaches the handler (401
+    # for bad credentials, not for a missing token) rather than being
+    # rejected by the auth dependency itself.
+    response = client.post("/auth/login", json={"email": "nobody@example.com", "password": "x"})
+    assert response.status_code == 401
+    assert "invalid" in response.json()["detail"].lower()
 
 
-def test_a_protected_stub_route_is_callable_without_enforcing_auth_yet() -> None:
-    # No Authorization header: the stub records the requirement in the OpenAPI
-    # document (see app/routers/backend.py) but does not enforce it, since
-    # enforcing it needs real users -- that is feature work for later.
+def test_nfr001_a_protected_stub_route_requires_a_token() -> None:
     response = client.get("/projects")
-    assert response.status_code == 200
-    assert response.json()["endpoint"] == "GET /projects"
+    assert response.status_code == 401
 
 
-def test_delete_label_returns_no_content() -> None:
+def test_delete_label_returns_unauthorized_without_a_token() -> None:
     response = client.delete("/tasks/t-1/labels/l-1")
-    assert response.status_code == 204
-    assert response.content == b""
+    assert response.status_code == 401

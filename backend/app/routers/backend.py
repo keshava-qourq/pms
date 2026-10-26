@@ -1,30 +1,25 @@
-"""Stub routes for the `backend` API Service component.
+"""Routes for the `backend` API Service component.
 
 The approved architecture gives this one component every path in the API
-spec (`docs/sdlc/architecture/api/openapi.yaml`), so this is the one router
-`routers/__init__.py` promises -- "one router per architecture component that
-owns endpoints, one route per endpoint the API spec declares." Each route
-returns `StubResponse`, the typed placeholder `schemas.py` defines, until the
-development sprint replaces it with real behaviour, one ticket at a time.
-
-NFR-001 (every endpoint except login and accept-invite requires a signed-in
-user) is wired structurally: protected routes carry the `bearer_scheme`
-dependency below, so the OpenAPI document already shows which routes need a
-token. It does not verify the token yet -- that needs real users, which is
-feature work. NFR-002 (admin-only invites) is noted on `/invitations` but, for
-the same reason, not enforced here.
+spec (`docs/sdlc/architecture/api/openapi.yaml`). Auth (US-001) is
+implemented: `POST /auth/login` and `GET /auth/me` are real, and every other
+route -- except `/health`, `/auth/login` and `/auth/accept-invite` -- is
+guarded by the shared `get_current_user` dependency (NFR-001). Everything
+else here is still the typed `StubResponse` placeholder until its own ticket
+implements it.
 """
 
-from fastapi import APIRouter, Depends, Response, status
-from fastapi.security import HTTPBearer
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy.orm import Session
 
-from app.schemas import StubResponse
+from app.auth import get_current_user
+from app.database import get_db
+from app.models import User
+from app.schemas import LoginRequest, LoginResponse, StubResponse, UserOut
+from app.security import create_access_token, verify_password
 
-# `auto_error=False`: a stub route has no real token to check yet. Declaring
-# the dependency only makes FastAPI record the bearer requirement in the
-# OpenAPI document, so it already matches NFR-001.
-bearer_scheme = HTTPBearer(auto_error=False)
-_auth = [Depends(bearer_scheme)]
+# Applied to every route except /health, /auth/login and /auth/accept-invite.
+_auth = [Depends(get_current_user)]
 
 router = APIRouter()
 
@@ -34,10 +29,17 @@ def _stub(endpoint: str) -> StubResponse:
 
 
 # ---- auth ------------------------------------------------------------------
-@router.post("/auth/login", response_model=StubResponse, tags=["auth"])
-async def login() -> StubResponse:
-    """{email, password} -> {access_token, user}. No auth."""
-    return _stub("POST /auth/login")
+@router.post("/auth/login", response_model=LoginResponse, tags=["auth"])
+async def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:  # noqa: B008
+    """{email, password} -> {access_token, token_type, user}. No auth (AC-001, AC-002)."""
+    user = db.query(User).filter(User.email == payload.email).first()
+    if user is None or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+    token = create_access_token(user.id)
+    return LoginResponse(access_token=token, user=UserOut.model_validate(user))
 
 
 @router.post("/auth/accept-invite", response_model=StubResponse, tags=["auth"])
@@ -46,10 +48,10 @@ async def accept_invite() -> StubResponse:
     return _stub("POST /auth/accept-invite")
 
 
-@router.get("/auth/me", response_model=StubResponse, dependencies=_auth, tags=["auth"])
-async def me() -> StubResponse:
-    """-> {user}. JWT required."""
-    return _stub("GET /auth/me")
+@router.get("/auth/me", response_model=UserOut, tags=["auth"])
+async def me(current_user: User = Depends(get_current_user)) -> UserOut:  # noqa: B008
+    """-> {id, email, name, is_admin}. JWT required."""
+    return UserOut.model_validate(current_user)
 
 
 # ---- invitations -------------------------------------------------------------

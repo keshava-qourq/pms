@@ -18,3 +18,30 @@ class StubResponse(BaseModel):
     endpoint: str
     status: str = "not_implemented"
     detail: str = "Scaffolded from the approved API spec; no behaviour yet."
+
+
+class LoginRequest(BaseModel):
+    """{email, password} as POST /auth/login expects."""
+
+    email: str
+    password: str
+
+
+class UserOut(BaseModel):
+    """The member profile returned by /auth/login and /auth/me."""
+
+    id: str
+    email: str
+    name: str | None = None
+    is_admin: bool
+
+    class Config:
+        from_attributes = True
+
+
+class LoginResponse(BaseModel):
+    """What POST /auth/login returns on success."""
+
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut

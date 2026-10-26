@@ -21,3 +21,6 @@ PyJWT>=2.8.0
 redis>=5.0
 sendgrid>=6.11
 # END QUORQ ARCHITECTURE PACKAGES
+
+# Schema migrations (US-001): additive-only, run with `alembic upgrade head`.
+alembic==1.13.3
