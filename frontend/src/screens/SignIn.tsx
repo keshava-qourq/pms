@@ -1,0 +1,253 @@
+// @ts-nocheck -- generated from the approved design under its JS runtime contract; not hand-written TypeScript.
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import React from "react";
+
+import { Icons } from "@/lib/icons";
+import { brand } from "@/lib/brand";
+import { useNavigate } from "@/lib/navigate";
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const { Check, AlertCircle, CheckCircle } = Icons;
+
+const PRODUCT = "PMS";
+const mix = (colour, percent) => `color-mix(in srgb, ${colour} ${percent}%, transparent)`;
+
+// The one seeded workspace account, so the sign-in can actually succeed or fail.
+const ACCOUNT = {
+  email: "rhea.okafor@meridian.works",
+  password: "northline-42",
+  name: "Rhea Okafor",
+};
+
+export default function Screen() {
+  const navigate = useNavigate();
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [status, setStatus] = React.useState("idle"); // idle | checking | error | success
+  const [fieldError, setFieldError] = React.useState({ email: "", password: "" });
+
+  const emailRef = React.useRef(null);
+  const passwordRef = React.useRef(null);
+  const timer = React.useRef(null);
+
+  React.useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const rule = `2px solid ${brand.primaryColor}`;
+  const field = {
+    border: rule,
+    borderRadius: brand.radius,
+    height: 44,
+    "--tw-ring-color": brand.accentColor,
+    "--tw-ring-offset-width": "2px",
+  };
+
+  const busy = status === "checking";
+  const done = status === "success";
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const trimmed = email.trim();
+    const next = {
+      email: !trimmed
+        ? "Enter the work email your invitation was sent to."
+        : /.+@.+\..+/.test(trimmed)
+          ? ""
+          : "That is not a full email address — include the domain, like meridian.works.",
+      password: password ? "" : "Enter your password.",
+    };
+    setFieldError(next);
+    if (next.email || next.password) {
+      setStatus("idle");
+      if (next.email) emailRef.current && emailRef.current.focus();
+      else passwordRef.current && passwordRef.current.focus();
+      return;
+    }
+    setStatus("checking");
+    timer.current = setTimeout(() => {
+      if (trimmed.toLowerCase() === ACCOUNT.email && password === ACCOUNT.password) {
+        setStatus("success");
+        timer.current = setTimeout(() => navigate("projects"), 650);
+      } else {
+        setStatus("error");
+      }
+    }, 700);
+  };
+
+  return (
+    <div
+      className="flex min-h-screen flex-col bg-white"
+      style={{ color: brand.primaryColor, fontFamily: brand.fontBody, backgroundColor: brand.backgroundColor }}
+    >
+      <style>{`
+        @keyframes pmsRise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @keyframes pmsTick { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+        .pms-rise { animation: pmsRise 160ms ease-out both; }
+        .pms-tick { animation: pmsTick 900ms linear infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .pms-rise, .pms-tick { animation: none !important; }
+        }
+      `}</style>
+
+      <header className="flex items-center justify-between px-6 py-5 md:px-10" style={{ borderBottom: rule }}>
+        <p className="text-lg font-bold tracking-tight" style={{ fontFamily: brand.fontHeading }}>{PRODUCT}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">Invite-only workspace</p>
+      </header>
+
+      <div className="grid flex-1 grid-cols-1 md:grid-cols-[440px_minmax(0,1fr)]">
+        <main className="flex flex-col justify-center px-6 py-12 md:border-r-0 md:px-10" style={{ borderRight: rule }}>
+          <h1
+            data-wf="b-0-0"
+            className="text-4xl font-bold tracking-tight"
+            style={{ fontFamily: brand.fontHeading }}
+          >
+            Sign in to {PRODUCT}
+          </h1>
+
+          <p data-wf="b-1-0" className="mt-3 max-w-[38ch] text-sm leading-relaxed" style={{ color: brand.neutralColor }}>
+            Sign in with your work email to reach the team's projects and tasks.
+          </p>
+
+          <form data-wf="b-2-0" className="mt-10 space-y-5" onSubmit={handleSubmit} noValidate>
+            <div className="space-y-2">
+              <label htmlFor="pms-email" className="block text-[11px] font-bold uppercase tracking-[0.16em]">
+                Email address
+              </label>
+              <input
+                data-wf="i-2-0-0"
+                id="pms-email"
+                ref={emailRef}
+                type="email"
+                name="email"
+                autoComplete="email"
+                spellCheck={false}
+                disabled={done}
+                aria-invalid={fieldError.email ? true : undefined}
+                aria-describedby={fieldError.email ? "pms-email-error" : "pms-hint"}
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); if (status === "error") setStatus("idle"); }}
+                className="w-full bg-white px-3 text-sm outline-none transition-colors focus:ring-2 disabled:opacity-60"
+                style={field}
+              />
+              {fieldError.email ? (
+                <p id="pms-email-error" className="pms-rise text-xs font-semibold" style={{ color: brand.accentColor }}>
+                  {fieldError.email}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="pms-password" className="block text-[11px] font-bold uppercase tracking-[0.16em]">
+                Password
+              </label>
+              <input
+                data-wf="i-2-0-1"
+                id="pms-password"
+                ref={passwordRef}
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                disabled={done}
+                aria-invalid={fieldError.password ? true : undefined}
+                aria-describedby={fieldError.password ? "pms-password-error" : "pms-hint"}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); if (status === "error") setStatus("idle"); }}
+                className="w-full bg-white px-3 text-sm outline-none transition-colors focus:ring-2 disabled:opacity-60"
+                style={field}
+              />
+              {fieldError.password ? (
+                <p id="pms-password-error" className="pms-rise text-xs font-semibold" style={{ color: brand.accentColor }}>
+                  {fieldError.password}
+                </p>
+              ) : null}
+            </div>
+
+            <p
+              id="pms-hint"
+              className="pt-1 text-xs leading-relaxed"
+              style={{ color: brand.neutralColor, fontVariantNumeric: "tabular-nums" }}
+            >
+              Demo account — {ACCOUNT.email} / {ACCOUNT.password}
+            </p>
+
+            <button
+              data-wf="b-3-0"
+              type="submit"
+              disabled={busy || done}
+              aria-busy={busy || undefined}
+              className="flex h-11 w-full items-center justify-center gap-3 text-sm font-bold uppercase tracking-[0.16em] text-white outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 active:opacity-80 disabled:opacity-70"
+              style={{ backgroundColor: brand.primaryColor, borderRadius: brand.radius, "--tw-ring-color": brand.accentColor }}
+            >
+              {busy ? (
+                <React.Fragment>
+                  <span aria-hidden className="pms-tick h-2 w-2" style={{ backgroundColor: brand.accentColor }} />
+                  Checking credentials
+                </React.Fragment>
+              ) : done ? (
+                <React.Fragment>
+                  <Check aria-hidden className="h-4 w-4" />
+                  Signed in
+                </React.Fragment>
+              ) : (
+                "Sign in"
+              )}
+            </button>
+          </form>
+
+          <div data-wf="b-4-0" aria-live="polite" className="mt-5 min-h-[56px]">
+            {status === "error" ? (
+              <p
+                className="pms-rise flex items-start gap-3 px-4 py-3 text-sm font-semibold"
+                style={{ border: `2px solid ${brand.accentColor}`, borderRadius: brand.radius, color: brand.accentColor }}
+              >
+                <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>Those credentials are invalid. Check your email and password and try again.</span>
+              </p>
+            ) : status === "success" ? (
+              <p
+                className="pms-rise flex items-start gap-3 px-4 py-3 text-sm font-semibold"
+                style={{ border: rule, borderRadius: brand.radius }}
+              >
+                <CheckCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>Signed in as {ACCOUNT.name}. Opening the projects overview…</span>
+              </p>
+            ) : (
+              <p className="text-xs leading-relaxed" style={{ color: brand.neutralColor }}>
+                Locked out or no account yet? An administrator invites new members by email.
+              </p>
+            )}
+          </div>
+        </main>
+
+        <section aria-hidden className="hidden flex-col justify-between px-10 py-12 md:flex" style={{ borderLeft: rule }}>
+          <p
+            className="text-[11px] font-bold uppercase tracking-[0.18em]"
+            style={{ color: brand.neutralColor }}
+          >
+            Projects · Tasks · Board
+          </p>
+          <div>
+            <p
+              className="text-[120px] font-bold leading-none tracking-tighter lg:text-[180px]"
+              style={{ fontFamily: brand.fontHeading }}
+            >
+              {PRODUCT}
+            </p>
+            <div className="mt-6 flex items-center gap-3 pt-4" style={{ borderTop: rule }}>
+              <span className="h-3 w-3" style={{ backgroundColor: brand.accentColor }} />
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em]">Meridian Works internal tooling</span>
+            </div>
+            <div className="mt-6 flex gap-1">
+              {[18, 44, 10, 32, 60, 24, 8, 40, 16].map((h, i) => (
+                <span
+                  key={i}
+                  className="w-3"
+                  style={{ height: h, backgroundColor: i === 4 ? brand.accentColor : mix(brand.primaryColor, 16) }}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

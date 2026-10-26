@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --brand-primary: #2563eb;
-  --brand-accent: #7c3aed;
-  --brand-neutral: #64748b;
-  --brand-radius: 0.5rem;
-  --brand-font-heading: system-ui, sans-serif;
-  --brand-font-body: system-ui, sans-serif;
+  --brand-primary: #111111;
+  --brand-accent: #c2410c;
+  --brand-neutral: #5c5c5c;
+  --brand-radius: 2px;
+  --brand-font-heading: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --brand-font-body: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --brand-surface: #ffffff;
   --brand-border: #e2e8f0;
   --brand-fg: #0f172a;
