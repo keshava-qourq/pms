@@ -7,7 +7,10 @@ implemented: `POST /auth/login` and `GET /auth/me` are real. Invitations
 Projects (US-003-1) are implemented: `GET/POST /projects` and
 `GET/PATCH /projects/{id}` are workspace-wide -- no owner filter or
 per-project role narrows what a signed-in member can see or edit (AC-007,
-AC-008). Every other route -- except `/health`, `/auth/login` and
+AC-008). Tasks (US-003-2) are implemented the same way:
+`GET/POST /projects/{id}/tasks` and `GET/PATCH /tasks/{id}` are editable by
+any signed-in member regardless of who created the task or its project
+(AC-008). Every other route -- except `/health`, `/auth/login` and
 `/auth/accept-invite` -- is guarded by the shared `get_current_user`
 dependency (NFR-001). Everything else here is still the typed `StubResponse`
 placeholder until its own ticket implements it.
@@ -35,6 +38,9 @@ from app.schemas import (
     ProjectSummary,
     ProjectUpdate,
     StubResponse,
+    TaskCreate,
+    TaskOut,
+    TaskUpdate,
     UserOut,
 )
 from app.security import create_access_token, hash_password, verify_password
@@ -71,6 +77,13 @@ def _get_project_or_404(db: Session, id: str) -> Project:
     if project is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
     return project
+
+
+def _get_task_or_404(db: Session, id: str) -> Task:
+    task = db.get(Task, id)
+    if task is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return task
 
 
 # ---- auth ------------------------------------------------------------------
@@ -195,9 +208,7 @@ async def list_projects(
     no owner filter is applied.
     """
     projects = db.query(Project).order_by(Project.created_at.desc()).all()
-    counts = dict(
-        db.query(Task.project_id, func.count(Task.id)).group_by(Task.project_id).all()
-    )
+    counts = dict(db.query(Task.project_id, func.count(Task.id)).group_by(Task.project_id).all())
     complete_counts = dict(
         db.query(Task.project_id, func.count(Task.id))
         .filter(Task.status == TASK_COMPLETE_STATUS)
@@ -272,41 +283,91 @@ async def update_project(
     return ProjectOut.model_validate(project)
 
 
-@router.get(
-    "/projects/{id}/tasks", response_model=StubResponse, dependencies=_auth, tags=["projects"]
-)
-async def list_project_tasks(id: str) -> StubResponse:
-    """-> [{task}]. JWT required."""
-    return _stub(f"GET /projects/{id}/tasks")
+@router.get("/projects/{id}/tasks", response_model=list[TaskOut], tags=["projects"])
+async def list_project_tasks(
+    id: str,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> list[TaskOut]:
+    """-> [{task}]. JWT required; any signed-in member, 404 for an unknown project."""
+    _get_project_or_404(db, id)
+    tasks = (
+        db.query(Task).filter(Task.project_id == id).order_by(Task.created_at.desc()).all()
+    )
+    return [TaskOut.model_validate(task) for task in tasks]
 
 
 @router.post(
-    "/projects/{id}/tasks", response_model=StubResponse, dependencies=_auth, tags=["projects"]
+    "/projects/{id}/tasks",
+    response_model=TaskOut,
+    status_code=status.HTTP_201_CREATED,
+    tags=["projects"],
 )
-async def create_task(id: str) -> StubResponse:
-    """{title, description?, owner_id?, due_date?, status?} -> {task}.
+async def create_task(
+    id: str,
+    payload: TaskCreate,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> TaskOut:
+    """{title, description?, status?, assignee_id?} -> {task}, 201.
 
-    JWT required. Enqueues an outbound notification once implemented
-    (US-006) -- see `app/celery_app.py` for the shared Celery instance.
+    JWT required, 404 for an unknown project. Enqueues an outbound
+    notification once implemented (US-006) -- see `app/celery_app.py` for the
+    shared Celery instance.
     """
-    return _stub(f"POST /projects/{id}/tasks")
+    _get_project_or_404(db, id)
+    task = Task(
+        project_id=id,
+        title=payload.title,
+        description=payload.description,
+        status=payload.status or "todo",
+        assignee_id=payload.assignee_id,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return TaskOut.model_validate(task)
 
 
 # ---- tasks --------------------------------------------------------------------
-@router.get("/tasks/{id}", response_model=StubResponse, dependencies=_auth, tags=["tasks"])
-async def get_task(id: str) -> StubResponse:
-    """-> {task, comments, checklist, labels}. JWT required."""
-    return _stub(f"GET /tasks/{id}")
+@router.get("/tasks/{id}", response_model=TaskOut, tags=["tasks"])
+async def get_task(
+    id: str,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> TaskOut:
+    """-> {task}. JWT required; any signed-in member, 404 for an unknown id."""
+    task = _get_task_or_404(db, id)
+    return TaskOut.model_validate(task)
 
 
-@router.patch("/tasks/{id}", response_model=StubResponse, dependencies=_auth, tags=["tasks"])
-async def update_task(id: str) -> StubResponse:
-    """{status?, owner_id?, due_date?, title?, description?} -> {task}.
+@router.patch("/tasks/{id}", response_model=TaskOut, tags=["tasks"])
+async def update_task(
+    id: str,
+    payload: TaskUpdate,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> TaskOut:
+    """{title?, description?, status?, assignee_id?} -> {task}.
 
-    JWT required. Enqueues an outbound notification once implemented
-    (US-007).
+    JWT required. Any signed-in member may save edits, including one who did
+    not create the task or its project (AC-008): there is no ownership
+    check. Enqueues an outbound notification once implemented (US-007).
     """
-    return _stub(f"PATCH /tasks/{id}")
+    task = _get_task_or_404(db, id)
+    if payload.title is not None:
+        task.title = payload.title
+    if payload.description is not None:
+        task.description = payload.description
+    if payload.status is not None:
+        task.status = payload.status
+    if payload.assignee_id is not None:
+        task.assignee_id = payload.assignee_id
+    task.updated_at = datetime.now(UTC)
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return TaskOut.model_validate(task)
 
 
 @router.get("/tasks/{id}/comments", response_model=StubResponse, dependencies=_auth, tags=["tasks"])

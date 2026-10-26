@@ -112,3 +112,37 @@ class ProjectSummary(BaseModel):
     project: ProjectOut
     task_total: int
     task_complete: int
+
+
+class TaskCreate(BaseModel):
+    """{title, description?, status?, assignee_id?} as POST /projects/{id}/tasks expects."""
+
+    title: str
+    description: str | None = None
+    status: str | None = None
+    assignee_id: str | None = None
+
+
+class TaskUpdate(BaseModel):
+    """{title?, description?, status?, assignee_id?} as PATCH /tasks/{id} expects."""
+
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None
+    assignee_id: str | None = None
+
+
+class TaskOut(BaseModel):
+    """The task record returned by the /tasks and /projects/{id}/tasks routes."""
+
+    id: str
+    project_id: str
+    title: str
+    description: str | None = None
+    status: str
+    assignee_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
