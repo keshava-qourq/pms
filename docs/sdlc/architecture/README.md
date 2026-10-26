@@ -5,13 +5,90 @@
 <!-- sdlc:auto:start narrative -->
 ## Overview
 
-### ARCH-GAP · draft
+### ARCH-001 · approved · source: architecture:summary
 
-No architecture-phase artifacts have been provided.
+PMS is architected as a lightweight project management system for a single internal team of up to ~25 users, approved as version 1 of the architecture.
 
-Requirements approved a technology stack (FastAPI 0.115, PostgreSQL 16, React 19, AWS, plus S3/SendGrid/Redis/Slack services), but no architecture deliverables -- system design, API contracts, data model, infrastructure/deployment diagrams, or security design -- have been produced or supplied yet.
+Overall design: a React 19 single-page frontend (scaffolded on Next.js) provides interchangeable Kanban and list views of tasks with inline comments, checklists and labels. It is backed by a FastAPI 0.115 REST API over a PostgreSQL 16 database, hosted on AWS. Access control is email/password sign-in with admin-only invitations; permissions are deliberately flat and equal for all signed-in members (no per-project roles). Outbound Slack and email notifications are pushed through a Redis-backed Celery queue so sending them never blocks a member saving a task, with retry on brief provider outages. Amazon S3 is provisioned for task file attachments. Explicitly out of scope for this MVP: per-project roles, SSO, Gantt charts/task dependencies, and two-way external sync.
 
-- ⚠ Architecture phase has not started or its output was not provided to this agent -- system design, data model, API contracts, and infrastructure diagrams are all missing.
+- ⚠ Requirements phase descriptions for US-001 through US-012 were not included in this input, so this architecture's entries could not be confidently linked to specific requirement IDs.
+- ⚠ No approval date was provided for this architecture version.
+
+### ARCH-002 · approved · source: architecture:components.frontend
+
+The Web App is a React 19 single-page application that renders sign-in, a projects dashboard, Kanban board, task list, and task detail (comments, checklists, labels).
+
+Responsive SPA built on React 19, scaffolded with Next.js for routing and SSR of static assets. Keeps Kanban board, list view, and task detail in sync over shared task state so changes made in one view (e.g. a drag-and-drop status change) are reflected in the others without a full reload.
+
+### ARCH-003 · approved · source: architecture:components.backend
+
+The API Service is a FastAPI 0.115 REST backend handling auth, projects, tasks, comments, checklists and labels.
+
+Enforces sign-in (JWT) on all project/task endpoints and restricts invitation creation to admins. On task creation and update, it enqueues outbound notification jobs rather than sending them synchronously, so member-facing requests are not blocked by Slack/email delivery.
+
+### ARCH-004 · approved · source: architecture:components.worker
+
+The Notification Worker is a Celery (Python) process that delivers queued Slack and email notifications in the background.
+
+Consumes jobs enqueued by the API Service, pushes messages via Slack webhooks and sends emails via SendGrid, and retries automatically on transient provider failures. This decouples notification delivery latency/failures from the member-facing save operations.
+
+### ARCH-005 · approved · source: architecture:components.database, architecture:entities
+
+PostgreSQL 16 is the system of record, storing users, invitations, projects, tasks, comments, checklist items, labels and in-app notifications and their relationships.
+
+Entities and fields as specified: users(id, email, password_hash, name, is_admin, created_at); invitations(id, email, token, invited_by, accepted, created_at, expires_at); projects(id, name, description, created_by, created_at); tasks(id, project_id, title, description, owner_id, due_date, status, created_at, updated_at); comments(id, task_id, author_id, body, created_at); checklist_items(id, task_id, title, is_complete, position); labels(id, name, color); task_labels(task_id, label_id) as the many-to-many join between tasks and labels; notifications(id, user_id, type, payload, read, created_at) for in-app notification records. The data model is chosen for PostgreSQL's strength with highly relational data (projects→tasks→comments/checklists, many-to-many labels) and is sized comfortably for a few dozen projects and 25 users.
+
+### ARCH-006 · approved · source: architecture:components.queue
+
+Redis 7 acts as the message broker holding outbound notification jobs between the API and the Celery worker.
+
+Ensures task saves return immediately to the member rather than waiting on Slack/email delivery, and holds failed sends for retry by the worker.
+
+### ARCH-007 · approved · source: architecture:components.object_store
+
+Amazon S3 is provisioned as object storage for task file attachments.
+
+S3 bucket is provisioned for this purpose; no further detail on attachment upload/download flow, size limits, or access control was provided in this input.
+
+- ⚠ No endpoint for uploading/retrieving task attachments is listed, and no detail on attachment access control, size limits, or lifecycle was provided — attachment flow appears provisioned at the infrastructure level but not yet specified at the API level.
+
+### ARCH-008 · approved · source: architecture:critical_paths.0
+
+Critical path: email/password sign-in and route protection for unauthenticated users.
+
+A member submits credentials; the API verifies the password hash and issues a JWT. Unauthenticated access to project/task pages is redirected to sign-in. Supported by POST /auth/login, POST /auth/accept-invite, and GET /auth/me endpoints, and the users/invitations tables.
+
+### ARCH-009 · approved · source: architecture:critical_paths.1
+
+Critical path: creating a task triggers persistence plus asynchronous Slack/email notification.
+
+A member creates a task in a project; the API persists it (POST /projects/{id}/tasks) and enqueues Slack and email notifications via the Redis queue so the save is not blocked waiting on notification delivery. The Notification Worker later consumes and sends these.
+
+### ARCH-010 · approved · source: architecture:critical_paths.2
+
+Critical path: dragging a Kanban card updates task status and reflects across views.
+
+Dragging a card to another column patches the task status (PATCH /tasks/{id}); the change persists in PostgreSQL and is reflected in the list view via the shared task state kept in sync on the frontend.
+
+### ARCH-011 · approved · source: architecture:endpoints
+
+The REST API surface covers auth/invitations, projects, tasks, comments, checklist items, labels, and notifications.
+
+Auth/invitations: POST /auth/login (authenticate, returns JWT); POST /auth/accept-invite (invitee sets password via token); GET /auth/me (current user); POST /invitations (admin-only, blocks duplicate existing members). Projects: GET /projects (list with task counts for dashboard); POST /projects (create, name required); GET /projects/{id}; PATCH /projects/{id} (edit name/description). Tasks: GET /projects/{id}/tasks (list for board/list views); POST /projects/{id}/tasks (create, title required, enqueues notification); GET /tasks/{id} (with comments, checklist, labels); PATCH /tasks/{id} (update status/owner/due date, enqueues notification). Comments: GET /tasks/{id}/comments (chronological); POST /tasks/{id}/comments (empty text rejected). Checklist: POST /tasks/{id}/checklist (add item, starts incomplete); PATCH /checklist/{id} (toggle complete). Labels: GET /labels (list available); POST /tasks/{id}/labels (apply to task); DELETE /tasks/{id}/labels/{label_id} (remove from task). Notifications: GET /notifications (current user's in-app notifications).
+
+- ⚠ No endpoints for deleting projects, deleting tasks, deleting comments, removing checklist items, or marking in-app notifications as read were specified.
+
+### ARCH-012 · approved · source: architecture:deployment_nodes
+
+Deployment topology consists of six nodes spanning web, API, worker, database, queue and object storage, all on AWS or AWS-compatible runtimes.
+
+web: React 19 SPA served via Next.js on Node.js. api: FastAPI 0.115 on Uvicorn, Python 3.12. worker: Celery worker, Python 3.12. postgres: Amazon RDS for PostgreSQL 16. redis: Redis 7 (redis:7-alpine image). s3: Amazon S3 bucket. This matches the component list (frontend, backend, worker, database, queue, object store) one-to-one.
+
+### ARCH-013 · approved · source: architecture:technology_decisions
+
+Four core technology decisions were made with alternatives considered and documented rationale: React 19, FastAPI 0.115, PostgreSQL 16, and AWS.
+
+Frontend — React 19 chosen over Vue/Svelte: drives the three state-heavy, live-updating screens (Kanban, list, task detail) from one codebase with drag-and-drop and inline editing; delivered via Next.js for routing and SSR of static assets. Backend — FastAPI 0.115 chosen over Flask/Django REST Framework: cleanly serves project/task CRUD, enforces JWT auth on all pages, eases one-way Slack webhook and email integration, and provides automatic OpenAPI docs for the team. Database — PostgreSQL 16 chosen over MySQL/SQLite: the highly relational model (projects→tasks→comments/checklists, many-to-many labels) maps naturally to it, and capacity is well within limits for a few dozen projects and 25 users. Cloud — AWS chosen over GCP/Azure: provides managed RDS PostgreSQL, S3, and compute in one place for a single internal team, avoiding multi-vendor stitching, and scales down affordably for 25 users.
 <!-- sdlc:auto:end narrative -->
 
 <!-- sdlc:auto:start building-blocks -->

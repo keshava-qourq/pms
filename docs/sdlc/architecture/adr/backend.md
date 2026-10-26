@@ -1,7 +1,7 @@
 <!-- sdlc:auto:start adr -->
 # ADR-0002: Use FastAPI 0.115 for Backend
 
-Status: Proposed  
+Status: Accepted  
 Date: 2026-10-26
 
 ## Context and Problem Statement
