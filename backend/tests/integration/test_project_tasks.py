@@ -45,9 +45,7 @@ def _create_project(member: dict) -> dict:
 
 def _create_task(member: dict, project_id: str, **overrides) -> dict:
     payload = {"title": "A task", **overrides}
-    response = client.post(
-        f"/projects/{project_id}/tasks", json=payload, headers=_auth(member)
-    )
+    response = client.post(f"/projects/{project_id}/tasks", json=payload, headers=_auth(member))
     return response
 
 
@@ -149,9 +147,7 @@ def test_ac017_missing_title_returns_422_and_creates_no_task(db_session: Session
     member = _make_member(db_session)
     project = _create_project(member)
 
-    response = client.post(
-        f"/projects/{project['id']}/tasks", json={}, headers=_auth(member)
-    )
+    response = client.post(f"/projects/{project['id']}/tasks", json={}, headers=_auth(member))
 
     assert response.status_code == 422
     listed = client.get(f"/projects/{project['id']}/tasks", headers=_auth(member))

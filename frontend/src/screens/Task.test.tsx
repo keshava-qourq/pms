@@ -143,7 +143,8 @@ describe("Task screen", () => {
       ),
     );
     const patchCall = fetchMock.mock.calls.find(
-      ([url, init]) => (init as RequestInit)?.method === "PATCH" && String(url).endsWith("/tasks/t-1"),
+      ([url, init]) =>
+        (init as RequestInit)?.method === "PATCH" && String(url).endsWith("/tasks/t-1"),
     );
     const body = JSON.parse((patchCall![1] as RequestInit).body as string);
     expect(body).toMatchObject({ status: "done", owner_id: "u9", due_date: "2026-12-15" });
