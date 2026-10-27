@@ -3,9 +3,9 @@
 > Maintained by QuorQ AI SDLC. Text between `sdlc:auto` markers is regenerated; anything outside them is yours and is kept.
 
 <!-- sdlc:auto:start summary -->
-79 tests · Passed 68 · Failed 0 · Skipped 0 · Not run 11
+109 tests · Passed 90 · Failed 0 · Skipped 3 · Not run 16
 
-Acceptance criteria covered: 8/30 · passing: 1/30
+Acceptance criteria covered: 18/30 · passing: 4/30
 <!-- sdlc:auto:end summary -->
 
 <!-- sdlc:auto:start tests -->
@@ -100,7 +100,49 @@ Acceptance criteria covered: 8/30 · passing: 1/30
 | — | Projects screen > shows an empty state when GET /projects returns none | Unit | Passed | `frontend/src/screens/Projects.test.tsx` |
 | AC-007 | [AC-007] a signed-in member sees a project created by another member in the overview | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
 | AC-008 | [AC-008] a member opens a project they did not create, edits a task, and the change is visible after reload | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
+| AC-010 | [AC-010] submitting the new-project form with a blank name shows an inline prompt and creates nothing | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
+| AC-012, AC-013 | [AC-012][AC-013] the dashboard lists a project's name and task progress, and selecting it opens its tasks | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
+| AC-014 | [AC-014] with no projects in the workspace, the empty state invites creating the first project | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
 | — | [NFR-006] the projects overview renders usably at a 375px mobile viewport | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
+
+## Sprint 2
+
+### US-004: Create and manage a project
+
+| Criteria | Test | Level | Result | File |
+|---|---|---|---|---|
+| AC-010 | test_ac010_empty_name_returns_422_and_creates_nothing | Integration | Passed | `backend/tests/integration/test_projects.py` |
+| AC-010 | test_ac010_missing_name_returns_422_and_creates_nothing | Integration | Passed | `backend/tests/integration/test_projects.py` |
+| AC-010 | test_ac010_whitespace_only_name_returns_422_and_creates_nothing | Integration | Passed | `backend/tests/integration/test_projects.py` |
+| AC-011 | test_ac011_blank_name_patch_returns_422_and_leaves_record_unchanged | Integration | Passed | `backend/tests/integration/test_projects.py` |
+| AC-011 | test_ac011_patch_name_and_description_persist_and_visible_to_another_member | Integration | Passed | `backend/tests/integration/test_projects.py` |
+| — | test_nfr003_a_few_dozen_projects_list_in_a_single_get_request | Integration | Passed | `backend/tests/integration/test_projects.py` |
+| — | test_post_project_returns_201_and_appears_in_get_for_another_member | Integration | Passed | `backend/tests/integration/test_projects.py` |
+
+### US-006: Create a task with owner, due date, and status
+
+| Criteria | Test | Level | Result | File |
+|---|---|---|---|---|
+| — | test_nfr004_saving_a_task_enqueues_the_job_rather_than_calling_outbound_services_inline | Unit | Skipped | `backend/tests/test_task_notifications.py` |
+| — | test_nfr005_job_is_safe_to_run_twice | Unit | Skipped | `backend/tests/test_task_notifications.py` |
+| — | test_nfr005_job_retries_with_backoff_on_an_outbound_failure | Unit | Skipped | `backend/tests/test_task_notifications.py` |
+| AC-017 | Task screen > [AC-017] blocks saving a blank title with an inline message and sends no request | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-018, AC-019 | Task screen > [AC-018/AC-019] changing status, owner and due date sends one PATCH /tasks/{id} with the new values, reflected after cache invalidation | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| — | Task screen > removes seeded sample task, owner and status data | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| — | Task screen > shows a 'no task selected' empty state when nothing was opened | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| — | Task screen > shows a loading state, then loads GET /tasks/{id} and renders the task | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| — | Task screen > shows an error state when the task fails to load | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-015 | test_ac015_creating_a_task_with_a_title_appears_in_list_and_detail | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
+| AC-016 | test_ac016_owner_due_date_and_status_round_trip_on_create_and_patch | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
+| AC-016 | test_ac016_unknown_owner_id_on_create_returns_422_and_creates_nothing | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
+| AC-016 | test_ac016_unknown_owner_id_on_patch_returns_422_and_leaves_task_unchanged | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
+| AC-017 | test_ac017_missing_title_returns_422_and_creates_no_task | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
+| AC-017 | test_ac017_whitespace_only_title_returns_422_and_creates_no_task | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
+| AC-018 | test_ac018_invalid_status_returns_422_and_leaves_task_unchanged | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
+| AC-018 | test_ac018_nfr007_patch_to_each_valid_status_persists_identically_in_detail_and_list | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
+| AC-019 | test_ac019_reassigning_owner_and_due_date_persists_and_is_visible_to_second_member | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
+| AC-015, AC-016 | [AC-015][AC-016] creating a task with owner, due date and status shows it on the board | E2E | Not run yet | `frontend/e2e/tasks.spec.ts` |
+| AC-018 | [AC-018][NFR-007] changing a task's status is reflected in both the board and the list view | E2E | Not run yet | `frontend/e2e/tasks.spec.ts` |
 
 ## Project setup
 

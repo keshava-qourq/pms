@@ -5,7 +5,7 @@
 <!-- sdlc:auto:start overview -->
 project management system
 
-**Documentation version:** v4
+**Documentation version:** v5
 <!-- sdlc:auto:end overview -->
 
 ## Contents
@@ -24,14 +24,14 @@ project management system
 | [Decisions (ADRs)](architecture/adr/README.md) | 4 decisions |
 | [Sprint plan](development/sprint-plan.md) | 3 sprints |
 | [Developer guide](development/developer-guide.md) | generated |
-| [API reference](development/api-reference.md) | 1 route |
+| [API reference](development/api-reference.md) | 21 routes |
 | [Test report](testing/test-report.md) | not run yet |
-| [Tests](testing/test-cases.md) | 79 tests |
+| [Tests](testing/test-cases.md) | 109 tests |
 | [Deployment guide](deployment/deployment-guide.md) | not deployed yet |
 | [Runbook](deployment/runbook.md) | not deployed yet |
 | [Release notes](deployment/release-notes.md) | 0 releases |
 | [Traceability matrix](traceability-matrix.md) | 12 requirements |
-| [Changelog](CHANGELOG.md) | 4 versions |
+| [Changelog](CHANGELOG.md) | 5 versions |
 <!-- sdlc:auto:end contents -->
 
 ## Open gaps
@@ -56,9 +56,10 @@ project management system
 
 ### Development
 
-- Development run status is reported as 'completed' but only Sprint 1 tickets (US-001, US-002, US-003) have recorded delivery; no evidence provided that Sprint 2 or Sprint 3 work was executed, confirm whether this is in progress, blocked, or missing from the input.
-- No delivery tickets, commits, or statuses were provided for US-004, US-005, US-006, or US-007 despite the development run being marked 'completed'; status of this sprint's execution is unconfirmed.
-- No delivery tickets, commits, or statuses were provided for US-008, US-009, US-010, US-011, or US-012 despite the development run being marked 'completed'; status of this sprint's execution is unconfirmed.
+- Same commit hash is shared with US-004; confirm whether both stories were genuinely delivered in a single combined commit or if this is a reporting duplication.
+- Same commit hash is shared with US-006; confirm whether both stories were delivered together or if this is a reporting duplication.
+- No delivery status, commit, or progress is recorded for US-001, US-002, or US-003 despite the development run being marked 'completed' -- status of this work is unknown and should be confirmed with the development agent/run log.
+- No delivery status, commit, or progress is recorded for US-008, US-009, US-010, US-011, or US-012 despite the development run being marked 'completed' -- status of this work is unknown and should be confirmed with the development agent/run log.
 
 ### Testing
 
