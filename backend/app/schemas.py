@@ -4,9 +4,12 @@ One pair per entity in the approved data model, plus the placeholder every
 generated route returns until it has been implemented.
 """
 
-from datetime import datetime
+from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+TASK_STATUSES = ("todo", "in_progress", "done")
 
 
 class StubResponse(BaseModel):
@@ -115,21 +118,37 @@ class ProjectSummary(BaseModel):
 
 
 class TaskCreate(BaseModel):
-    """{title, description?, status?, assignee_id?} as POST /projects/{id}/tasks expects."""
+    """{title, description?, status?, owner_id?, due_date?} as POST /projects/{id}/tasks expects."""
 
     title: str
     description: str | None = None
-    status: str | None = None
-    assignee_id: str | None = None
+    status: Literal["todo", "in_progress", "done"] | None = None
+    owner_id: str | None = None
+    due_date: date | None = None
+
+    @field_validator("title")
+    @classmethod
+    def title_must_not_be_blank(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("title must not be blank")
+        return value
 
 
 class TaskUpdate(BaseModel):
-    """{title?, description?, status?, assignee_id?} as PATCH /tasks/{id} expects."""
+    """{title?, description?, status?, owner_id?, due_date?} as PATCH /tasks/{id} expects."""
 
     title: str | None = None
     description: str | None = None
-    status: str | None = None
-    assignee_id: str | None = None
+    status: Literal["todo", "in_progress", "done"] | None = None
+    owner_id: str | None = None
+    due_date: date | None = None
+
+    @field_validator("title")
+    @classmethod
+    def title_must_not_be_blank(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("title must not be blank")
+        return value
 
 
 class TaskOut(BaseModel):
@@ -140,7 +159,8 @@ class TaskOut(BaseModel):
     title: str
     description: str | None = None
     status: str
-    assignee_id: str | None = None
+    owner_id: str | None = None
+    due_date: date | None = None
     created_at: datetime
     updated_at: datetime
 

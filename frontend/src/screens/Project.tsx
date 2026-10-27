@@ -8,6 +8,8 @@ import { useNavigate } from "@/lib/navigate";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { getSelectedProjectId } from "@/lib/selectedProject";
+import { setSelectedTaskId } from "@/lib/selectedTask";
+import { getUser } from "@/lib/api";
 import {
   useProject,
   useProjectTasks,
@@ -46,14 +48,6 @@ const STATUSES = [
   { key: "done", label: "Done", wf: "b-3-2" },
 ];
 
-const TEAM = [
-  { id: "u1", name: "Priya Nandakumar", short: "Priya N" },
-  { id: "u2", name: "Tom Ek", short: "Tom Ek" },
-  { id: "u3", name: "Mia Oduya", short: "Mia Oduya" },
-  { id: "u4", name: "Dan Whitlock", short: "Dan W" },
-  { id: "u5", name: "Sara Lindqvist", short: "Sara L" },
-];
-
 const LABELS = [
   { id: "l1", name: "Research", color: "neutral" },
   { id: "l2", name: "Design", color: "neutral" },
@@ -87,14 +81,10 @@ const longDate = (iso) => {
   return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 };
 
-const ownerName = (id) => {
-  const u = TEAM.find((m) => m.id === id);
-  return u ? u.name : "Unassigned";
-};
-
-const ownerShort = (id) => {
-  const u = TEAM.find((m) => m.id === id);
-  return u ? u.short : "Unassigned";
+const ownerLabel = (options, id) => {
+  if (id === null || id === undefined || id === "") return "Unassigned";
+  const u = options.find((m) => m.id === String(id));
+  return u ? u.name : `Member ${String(id).slice(0, 8)}`;
 };
 
 const labelById = (id) => LABELS.find((l) => l.id === id);
@@ -118,6 +108,25 @@ function ScreenInner() {
     () => (tasksQuery.data || []).map((t) => ({ ...t, labels: t.labels || [], wf: null })),
     [tasksQuery.data],
   );
+  const currentUser = React.useMemo(() => getUser(), []);
+  const ownerOptions = React.useMemo(() => {
+    const options = new Map();
+    if (currentUser && currentUser.id !== undefined && currentUser.id !== null) {
+      const id = String(currentUser.id);
+      options.set(id, currentUser.name || currentUser.email || id);
+    }
+    tasks.forEach((t) => {
+      if (t.owner_id !== undefined && t.owner_id !== null && t.owner_id !== "") {
+        const id = String(t.owner_id);
+        if (!options.has(id)) options.set(id, id);
+      }
+    });
+    return Array.from(options, ([id, name]) => ({ id, name }));
+  }, [tasks, currentUser]);
+  const openTask = (id) => {
+    setSelectedTaskId(id);
+    navigate("task");
+  };
   const [view, setView] = React.useState("board");
   const [modal, setModal] = React.useState(null); // 'task' | 'project' | null
   const [flashId, setFlashId] = React.useState(null);
@@ -156,7 +165,7 @@ function ScreenInner() {
 
   const setOwner = (id, owner_id) => {
     const t = tasks.find((x) => x.id === id);
-    announce(`“${t ? t.title : "Task"}” assigned to ${ownerName(owner_id)}`);
+    announce(`“${t ? t.title : "Task"}” assigned to ${ownerLabel(ownerOptions, owner_id)}`);
     updateTaskMut.mutate({ id, owner_id: owner_id || null });
   };
 
@@ -191,7 +200,7 @@ function ScreenInner() {
   const emptyForm = {
     title: "",
     description: "",
-    owner_id: "u1",
+    owner_id: "",
     due_date: "2026-11-03",
     status: "todo",
     labels: [],
@@ -439,7 +448,7 @@ function ScreenInner() {
                   <button
                     type="button"
                     data-wf={t.wf && i < wfLimits[status.key] ? t.wf : undefined}
-                    onClick={() => navigate("task")}
+                    onClick={() => openTask(t.id)}
                     className="obs-focus min-w-0 flex-1 text-left"
                     style={{
                       fontSize: 13,
@@ -457,7 +466,7 @@ function ScreenInner() {
 
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <span className="tabular-nums truncate" style={{ fontSize: 11, color: MUTED }}>
-                    {ownerShort(t.owner_id)} · {shortDate(t.due_date)}
+                    {ownerLabel(ownerOptions, t.owner_id)} · {shortDate(t.due_date)}
                     {overdue(t) ? (
                       <span style={{ color: ACCENT, fontWeight: 700 }}> · Overdue</span>
                     ) : null}
@@ -879,7 +888,7 @@ function ScreenInner() {
                       {tasks.map((t) => (
                         <TR
                           key={t.id}
-                          onClick={() => navigate("task")}
+                          onClick={() => openTask(t.id)}
                           className={`obs-row ${flashId === t.id ? "obs-flash" : ""}`}
                           style={{ borderBottom: `1px solid ${RULE}`, cursor: "pointer" }}
                         >
@@ -888,7 +897,7 @@ function ScreenInner() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate("task");
+                                openTask(t.id);
                               }}
                               className="obs-focus w-full text-left"
                               style={{
@@ -925,7 +934,7 @@ function ScreenInner() {
                               style={miniSelect}
                             >
                               <option value="">Unassigned</option>
-                              {TEAM.map((m) => (
+                              {ownerOptions.map((m) => (
                                 <option key={m.id} value={m.id}>
                                   {m.name}
                                 </option>
@@ -1137,7 +1146,7 @@ function ScreenInner() {
                     style={fieldStyle}
                   >
                     <option value="">Unassigned</option>
-                    {TEAM.map((m) => (
+                    {ownerOptions.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name}
                       </option>
