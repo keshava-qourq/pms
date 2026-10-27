@@ -1,104 +1,25 @@
 // @ts-nocheck -- generated from the approved design under its JS runtime contract; not hand-written TypeScript.
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import React from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
 
 import * as UI from "@/lib/ui";
 import { Icons } from "@/lib/icons";
 import { brand } from "@/lib/brand";
 import { useNavigate } from "@/lib/navigate";
+import { useProjects, useCreateProject } from "@/lib/projects";
+import { setSelectedProjectId } from "@/lib/selectedProject";
+import { queryClient } from "@/lib/queryClient";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { Button, Input, Textarea, Label, Empty } = UI;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 const { Plus, Search, X, ChevronRight, Clock, AlertCircle, CheckCircle } = Icons;
-
-const { Button, Input, Textarea, Label, Empty } = UI;
-const { Plus, Search, X, ChevronRight, AlertCircle, CheckCircle, Clock } = Icons;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const INITIAL_PROJECTS = [
-  {
-    id: "p-1041",
-    wf: "i-2-0-0",
-    name: "Website Redesign",
-    description: "Marketing site rebuilt on the Obsidian design system. Copy freeze is 06 Nov.",
-    total: 18,
-    done: 12,
-    overdue: 2,
-    created_by: "Dana Whitfield",
-    created_at: "2026-08-14",
-  },
-  {
-    id: "p-1042",
-    wf: "i-2-0-1",
-    name: "Mobile App v2",
-    description: "Offline task sync, push notifications and the new board gestures for iOS and Android.",
-    total: 21,
-    done: 5,
-    overdue: 3,
-    created_by: "Marcus Lee",
-    created_at: "2026-09-02",
-  },
-  {
-    id: "p-1043",
-    wf: "i-2-0-2",
-    name: "Q4 Marketing Campaign",
-    description: "Paid, lifecycle and field activity for the October through December push.",
-    total: 9,
-    done: 9,
-    overdue: 0,
-    created_by: "Imogen Castellanos",
-    created_at: "2026-07-21",
-  },
-  {
-    id: "p-1044",
-    wf: "i-2-0-3",
-    name: "Internal Wiki Migration",
-    description: "Move 340 Confluence pages to the handbook repo. Kick-off meeting booked for 29 Oct.",
-    total: 7,
-    done: 0,
-    overdue: 0,
-    created_by: "Dana Whitfield",
-    created_at: "2026-10-20",
-  },
-  {
-    id: "p-1045",
-    wf: null,
-    name: "Billing Migration — Adyen",
-    description: "Cut invoicing and dunning over from Stripe without a gap in revenue reporting.",
-    total: 23,
-    done: 14,
-    overdue: 1,
-    created_by: "Priya Raghunathan",
-    created_at: "2026-06-30",
-  },
-  {
-    id: "p-1046",
-    wf: null,
-    name: "SOC 2 Evidence Pack",
-    description: "Collect control evidence for the Type II window closing 31 Jan 2027.",
-    total: 40,
-    done: 31,
-    overdue: 0,
-    created_by: "Marcus Lee",
-    created_at: "2026-05-11",
-  },
-  {
-    id: "p-1047",
-    wf: null,
-    name: "Onboarding Revamp",
-    description: "First-run checklist, sample project seeding and the invite email rewrite.",
-    total: 11,
-    done: 6,
-    overdue: 0,
-    created_by: "Søren Krogh",
-    created_at: "2026-09-28",
-  },
-];
-
 function formatDate(iso) {
-  const parts = iso.split("-");
+  if (!iso) return "—";
+  const parts = iso.split("T")[0].split("-");
   return Number(parts[2]) + " " + MONTHS[Number(parts[1]) - 1] + " " + parts[0];
 }
 
@@ -109,21 +30,41 @@ function statusOf(p) {
   return { word: "In progress", kind: "active" };
 }
 
-export default function Screen() {
+function ScreenInner() {
   const navigate = useNavigate();
   const primary = brand.primaryColor;
   const accent = brand.accentColor;
   const neutral = brand.neutralColor;
   const hair = primary + "24";
 
-  const [projects, setProjects] = React.useState(INITIAL_PROJECTS);
+  const projectsQuery = useProjects();
+  const createProjectMut = useCreateProject();
+
+  const projects = React.useMemo(
+    () =>
+      (projectsQuery.data ?? []).map((row) => ({
+        id: row.project.id,
+        wf: null,
+        name: row.project.name,
+        description:
+          row.project.description || "No description yet — add one from the project workspace.",
+        total: row.task_total ?? 0,
+        done: row.task_complete ?? 0,
+        overdue: 0,
+        created_by: row.project.created_by,
+        created_at: row.project.created_at,
+      })),
+    [projectsQuery.data],
+  );
+
+  const loading = projectsQuery.isLoading;
+  const loadError = projectsQuery.isError;
+
   const [query, setQuery] = React.useState("");
-  const [loading, setLoading] = React.useState(true);
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [desc, setDesc] = React.useState("");
   const [error, setError] = React.useState(null);
-  const [creating, setCreating] = React.useState(false);
   const [created, setCreated] = React.useState(null);
 
   const timers = React.useRef([]);
@@ -136,10 +77,7 @@ export default function Screen() {
     return t;
   };
 
-  React.useEffect(() => {
-    addTimer(setTimeout(() => setLoading(false), 650));
-    return () => timers.current.forEach(clearTimeout);
-  }, []);
+  React.useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   React.useEffect(() => {
     if (open) addTimer(setTimeout(() => nameRef.current && nameRef.current.focus(), 30));
@@ -148,7 +86,6 @@ export default function Screen() {
   const closeModal = () => {
     setOpen(false);
     setError(null);
-    setCreating(false);
     addTimer(setTimeout(() => triggerRef.current && triggerRef.current.focus(), 20));
   };
 
@@ -160,7 +97,7 @@ export default function Screen() {
     }
     if (e.key !== "Tab" || !panelRef.current) return;
     const nodes = panelRef.current.querySelectorAll(
-      'button:not([disabled]), input, textarea, [href], [tabindex]:not([tabindex="-1"])'
+      'button:not([disabled]), input, textarea, [href], [tabindex]:not([tabindex="-1"])',
     );
     if (!nodes.length) return;
     const first = nodes[0];
@@ -174,7 +111,7 @@ export default function Screen() {
     }
   };
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
@@ -186,42 +123,43 @@ export default function Screen() {
     if (clash) {
       setError({
         field: "name",
-        message: "“" + clash.name + "” already exists in this workspace. Pick another name, or open the one you have.",
+        message:
+          "“" +
+          clash.name +
+          "” already exists in this workspace. Pick another name, or open the one you have.",
       });
       if (nameRef.current) nameRef.current.focus();
       return;
     }
     setError(null);
-    setCreating(true);
-    addTimer(
-      setTimeout(() => {
-        const fresh = {
-          id: "p-" + (1048 + projects.length),
-          wf: null,
-          name: trimmed,
-          description: desc.trim() || "No description yet — add one from the project workspace.",
-          total: 0,
-          done: 0,
-          overdue: 0,
-          created_by: "You (Priya Raghunathan)",
-          created_at: "2026-10-26",
-          isNew: true,
-        };
-        setProjects((prev) => [fresh, ...prev]);
-        setCreated(fresh);
-        setCreating(false);
-        setOpen(false);
-        setName("");
-        setDesc("");
-        setQuery("");
-        addTimer(setTimeout(() => triggerRef.current && triggerRef.current.focus(), 20));
-      }, 620)
-    );
+    try {
+      const saved = await createProjectMut.mutateAsync({
+        name: trimmed,
+        description: desc.trim() || undefined,
+      });
+      setCreated({
+        id: saved.id,
+        name: saved.name,
+      });
+      setOpen(false);
+      setName("");
+      setDesc("");
+      setQuery("");
+      addTimer(setTimeout(() => triggerRef.current && triggerRef.current.focus(), 20));
+    } catch {
+      setError({ field: "api", message: "We couldn't create the project. Try again." });
+    }
   };
+
+  const creating = createProjectMut.isPending;
 
   const q = query.trim().toLowerCase();
   const filtered = projects.filter(
-    (p) => !q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || p.created_by.toLowerCase().includes(q)
+    (p) =>
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.description.toLowerCase().includes(q) ||
+      p.created_by.toLowerCase().includes(q),
   );
 
   const atRisk = projects.filter((p) => statusOf(p).kind === "risk").length;
@@ -246,7 +184,8 @@ export default function Screen() {
 
   const badgeStyle = (kind) => {
     if (kind === "risk") return { color: accent, borderColor: accent };
-    if (kind === "done") return { color: primary, borderColor: primary, backgroundColor: primary + "0f" };
+    if (kind === "done")
+      return { color: primary, borderColor: primary, backgroundColor: primary + "0f" };
     if (kind === "idle") return { color: neutral, borderColor: hair };
     return { color: primary, borderColor: primary };
   };
@@ -266,7 +205,7 @@ export default function Screen() {
             backgroundColor: complete ? primary : late ? accent : "transparent",
             border: complete || late ? "none" : "1px solid " + hair,
           }}
-        />
+        />,
       );
     }
     if (!cap) {
@@ -283,16 +222,27 @@ export default function Screen() {
     );
   };
 
+  const openProject = (id) => {
+    setSelectedProjectId(id);
+    navigate("project");
+  };
+
   return (
-    <div className="min-h-full px-6 py-8 md:px-10 md:py-10" style={{ backgroundColor: brand.backgroundColor, fontFamily: brand.fontBody, color: primary }}>
+    <div
+      className="min-h-full px-6 py-8 md:px-10 md:py-10"
+      style={{ backgroundColor: brand.backgroundColor, fontFamily: brand.fontBody, color: primary }}
+    >
       <style>{css}</style>
 
       <div className="mx-auto w-full max-w-[1180px]">
         {/* Row 1 — title + primary action */}
         <div className="grid grid-cols-12 items-end gap-4">
           <div className="col-span-12 md:col-span-8" data-wf="b-0-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em]" style={{ color: neutral }}>
-              Northgate Ops workspace
+            <p
+              className="text-[11px] font-bold uppercase tracking-[0.22em]"
+              style={{ color: neutral }}
+            >
+              Workspace
             </p>
             <h1
               className="mt-2 text-[34px] md:text-[38px] font-bold leading-none tracking-[-0.02em]"
@@ -317,7 +267,12 @@ export default function Screen() {
                 setOpen(true);
               }}
               className="ob-focus inline-flex h-11 items-center gap-2 px-5 text-[13px] font-bold uppercase tracking-[0.12em]"
-              style={{ backgroundColor: primary, color: brand.backgroundColor, borderRadius: brand.radius, border: "2px solid " + primary }}
+              style={{
+                backgroundColor: primary,
+                color: brand.backgroundColor,
+                borderRadius: brand.radius,
+                border: "2px solid " + primary,
+              }}
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               New project
@@ -325,7 +280,10 @@ export default function Screen() {
           </div>
         </div>
 
-        <div className="mt-6 flex items-center gap-3" style={{ height: "2px", backgroundColor: primary }} />
+        <div
+          className="mt-6 flex items-center gap-3"
+          style={{ height: "2px", backgroundColor: primary }}
+        />
 
         {/* Success feedback for a created project */}
         {created && (
@@ -337,27 +295,54 @@ export default function Screen() {
             <p className="flex items-center gap-2 text-[13px]">
               <CheckCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span>
-                <span className="font-bold">{created.name}</span> is saved and visible to the whole team. It is first in the grid below.
+                <span className="font-bold">{created.name}</span> is saved and visible to the whole
+                team. It is in the grid below.
               </span>
+            </p>
+          </div>
+        )}
+
+        {loadError && (
+          <div
+            className="ob-rise mt-6 flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+            style={{ border: "2px solid " + accent, borderRadius: brand.radius, color: accent }}
+            role="alert"
+          >
+            <p className="flex items-center gap-2 text-[13px]">
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+              Couldn't load projects. Check your connection and try again.
             </p>
           </div>
         )}
 
         {/* Row 2 — search */}
         <div className="mt-6" data-wf="b-1-0">
-          <Label htmlFor="project-search" className="block text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: neutral }}>
+          <Label
+            htmlFor="project-search"
+            className="block text-[11px] font-bold uppercase tracking-[0.18em]"
+            style={{ color: neutral }}
+          >
             Search projects
           </Label>
           <div className="relative mt-2">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: neutral }} aria-hidden="true" />
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+              style={{ color: neutral }}
+              aria-hidden="true"
+            />
             <Input
               id="project-search"
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Name, description or owner — e.g. “billing” or “Dana”"
+              placeholder="Name, description or owner"
               className="ob-focus h-11 w-full pl-10 pr-24 text-[14px]"
-              style={{ border: "2px solid " + primary, borderRadius: brand.radius, backgroundColor: brand.backgroundColor, color: primary }}
+              style={{
+                border: "2px solid " + primary,
+                borderRadius: brand.radius,
+                backgroundColor: brand.backgroundColor,
+                color: primary,
+              }}
             />
             {query && (
               <Button
@@ -369,20 +354,32 @@ export default function Screen() {
               </Button>
             )}
           </div>
-          <p className="mt-2 text-[12px] tabular-nums" style={{ color: neutral }} aria-live="polite">
+          <p
+            className="mt-2 text-[12px] tabular-nums"
+            style={{ color: neutral }}
+            aria-live="polite"
+          >
             {loading
               ? "Loading the workspace…"
               : query
-              ? filtered.length + " of " + projects.length + " projects match “" + query.trim() + "”"
-              : "Showing all " + projects.length + " projects · synced 09:41"}
+                ? filtered.length +
+                  " of " +
+                  projects.length +
+                  " projects match “" +
+                  query.trim() +
+                  "”"
+                : "Showing all " + projects.length + " projects"}
           </p>
         </div>
 
         {/* Row 3 — project ledger */}
         <section className="mt-8" data-wf="b-2-0" aria-labelledby="all-projects-heading">
           <div className="flex items-baseline justify-between gap-4">
-            <h2 id="all-projects-heading" className="text-[13px] font-bold uppercase tracking-[0.18em]">
-              All projects (<span className="tabular-nums">{loading ? projects.length : filtered.length}</span>)
+            <h2
+              id="all-projects-heading"
+              className="text-[13px] font-bold uppercase tracking-[0.18em]"
+            >
+              All projects (<span className="tabular-nums">{loading ? 0 : filtered.length}</span>)
             </h2>
             <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: neutral }}>
               Task progress
@@ -390,10 +387,17 @@ export default function Screen() {
           </div>
 
           {loading ? (
-            <div className="mt-3 overflow-hidden" style={{ border: "2px solid " + primary, borderRadius: brand.radius }}>
+            <div
+              className="mt-3 overflow-hidden"
+              style={{ border: "2px solid " + primary, borderRadius: brand.radius }}
+            >
               <div className="-mb-[2px] -mr-[2px] grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="border-b-2 border-r-2 p-5" style={{ borderColor: primary }}>
+                  <div
+                    key={i}
+                    className="border-b-2 border-r-2 p-5"
+                    style={{ borderColor: primary }}
+                  >
                     <div className="ob-pulse space-y-3">
                       <div style={{ height: "10px", width: "28%", backgroundColor: hair }} />
                       <div style={{ height: "18px", width: "66%", backgroundColor: hair }} />
@@ -405,7 +409,10 @@ export default function Screen() {
               </div>
             </div>
           ) : filtered.length > 0 ? (
-            <div className="mt-3 overflow-hidden" style={{ border: "2px solid " + primary, borderRadius: brand.radius }}>
+            <div
+              className="mt-3 overflow-hidden"
+              style={{ border: "2px solid " + primary, borderRadius: brand.radius }}
+            >
               <ul className="-mb-[2px] -mr-[2px] grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                 {filtered.map((p, idx) => {
                   const st = statusOf(p);
@@ -413,42 +420,64 @@ export default function Screen() {
                   return (
                     <li
                       key={p.id}
-                      className={"ledger-cell relative flex flex-col gap-3 border-b-2 border-r-2 p-5 " + (p.isNew ? "ob-enter" : "")}
+                      className="ledger-cell relative flex flex-col gap-3 border-b-2 border-r-2 p-5"
                       style={{ borderColor: primary }}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <span className="text-[11px] font-bold tabular-nums tracking-[0.18em]" style={{ color: neutral }}>
+                        <span
+                          className="text-[11px] font-bold tabular-nums tracking-[0.18em]"
+                          style={{ color: neutral }}
+                        >
                           {String(idx + 1).padStart(2, "0")}
                         </span>
                         <span
                           className="inline-flex items-center gap-1 px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.14em]"
-                          style={{ ...badgeStyle(st.kind), border: "1px solid " + (badgeStyle(st.kind).borderColor || hair), borderRadius: brand.radius }}
+                          style={{
+                            ...badgeStyle(st.kind),
+                            border: "1px solid " + (badgeStyle(st.kind).borderColor || hair),
+                            borderRadius: brand.radius,
+                          }}
                         >
-                          {st.kind === "risk" && <AlertCircle className="h-3 w-3" aria-hidden="true" />}
-                          {st.kind === "done" && <CheckCircle className="h-3 w-3" aria-hidden="true" />}
+                          {st.kind === "risk" && (
+                            <AlertCircle className="h-3 w-3" aria-hidden="true" />
+                          )}
+                          {st.kind === "done" && (
+                            <CheckCircle className="h-3 w-3" aria-hidden="true" />
+                          )}
                           {st.kind === "idle" && <Clock className="h-3 w-3" aria-hidden="true" />}
                           {st.word}
                         </span>
                       </div>
 
-                      <h3 className="text-[17px] font-bold leading-snug tracking-[-0.01em]" style={{ fontFamily: brand.fontHeading }}>
+                      <h3
+                        className="text-[17px] font-bold leading-snug tracking-[-0.01em]"
+                        style={{ fontFamily: brand.fontHeading }}
+                      >
                         <button
                           type="button"
                           data-wf={p.wf || undefined}
-                          onClick={() => navigate("project")}
+                          onClick={() => openProject(p.id)}
                           className="ob-focus group text-left"
                           style={{ color: primary }}
                         >
                           <span className="absolute inset-0" aria-hidden="true" />
-                          <span className="decoration-2 underline-offset-4 group-hover:underline">{p.name}</span>
+                          <span className="decoration-2 underline-offset-4 group-hover:underline">
+                            {p.name}
+                          </span>
                         </button>
                       </h3>
 
-                      <p className="max-w-[44ch] text-[13px] leading-[1.55]" style={{ color: neutral }}>
+                      <p
+                        className="max-w-[44ch] text-[13px] leading-[1.55]"
+                        style={{ color: neutral }}
+                      >
                         {p.description}
                       </p>
 
-                      <div className="mt-auto space-y-2 pt-3" style={{ borderTop: "1px solid " + hair }}>
+                      <div
+                        className="mt-auto space-y-2 pt-3"
+                        style={{ borderTop: "1px solid " + hair }}
+                      >
                         <Ticks p={p} />
                         <div className="flex items-baseline justify-between gap-2">
                           <p className="text-[12px] tabular-nums">
@@ -457,25 +486,27 @@ export default function Screen() {
                             </span>{" "}
                             tasks complete
                           </p>
-                          <span className="text-[12px] font-bold tabular-nums" style={{ color: p.total ? primary : neutral }}>
+                          <span
+                            className="text-[12px] font-bold tabular-nums"
+                            style={{ color: p.total ? primary : neutral }}
+                          >
                             {p.total ? pct + "%" : "—"}
                           </span>
                         </div>
-                        {p.overdue > 0 ? (
-                          <p className="flex items-center gap-1 text-[12px] font-bold tabular-nums" style={{ color: accent }}>
-                            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                            {p.overdue} task{p.overdue > 1 ? "s" : ""} past due
-                          </p>
-                        ) : (
-                          <p className="text-[12px]" style={{ color: neutral }}>
-                            Nothing past due
-                          </p>
-                        )}
-                        <p className="flex items-center justify-between gap-2 text-[11px]" style={{ color: neutral }}>
+                        <p className="text-[12px]" style={{ color: neutral }}>
+                          Nothing past due
+                        </p>
+                        <p
+                          className="flex items-center justify-between gap-2 text-[11px]"
+                          style={{ color: neutral }}
+                        >
                           <span className="truncate">
                             {p.created_by} · {formatDate(p.created_at)}
                           </span>
-                          <span className="flex shrink-0 items-center gap-1 uppercase tracking-[0.12em]" aria-hidden="true">
+                          <span
+                            className="flex shrink-0 items-center gap-1 uppercase tracking-[0.12em]"
+                            aria-hidden="true"
+                          >
                             Open
                             <ChevronRight className="h-3.5 w-3.5" />
                           </span>
@@ -490,7 +521,7 @@ export default function Screen() {
         </section>
 
         {/* Row 4 — empty states */}
-        {!loading && filtered.length === 0 && (
+        {!loading && !loadError && filtered.length === 0 && (
           <div
             className="ob-fade mt-3 px-6 py-12"
             data-wf="b-3-0"
@@ -504,7 +535,11 @@ export default function Screen() {
                   <Button
                     onClick={() => setOpen(true)}
                     className="ob-focus inline-flex h-11 items-center gap-2 px-5 text-[13px] font-bold uppercase tracking-[0.12em]"
-                    style={{ backgroundColor: primary, color: brand.backgroundColor, borderRadius: brand.radius }}
+                    style={{
+                      backgroundColor: primary,
+                      color: brand.backgroundColor,
+                      borderRadius: brand.radius,
+                    }}
                   >
                     <Plus className="h-4 w-4" aria-hidden="true" />
                     New project
@@ -519,7 +554,11 @@ export default function Screen() {
                   <Button
                     onClick={() => setQuery("")}
                     className="ob-focus inline-flex h-11 items-center gap-2 px-5 text-[13px] font-bold uppercase tracking-[0.12em]"
-                    style={{ backgroundColor: primary, color: brand.backgroundColor, borderRadius: brand.radius }}
+                    style={{
+                      backgroundColor: primary,
+                      color: brand.backgroundColor,
+                      borderRadius: brand.radius,
+                    }}
                   >
                     Clear search
                   </Button>
@@ -530,7 +569,8 @@ export default function Screen() {
         )}
 
         <p className="mt-8 max-w-[70ch] text-[12px] leading-[1.6]" style={{ color: neutral }}>
-          Access is flat: every signed-in member can open and edit every project and task here. Only workspace admins — Dana Whitfield and Marcus Lee — can invite new members; ask one of them to send an invitation.
+          Access is flat: every signed-in member can open and edit every project and task here. Only
+          workspace admins can invite new members; ask one of them to send an invitation.
         </p>
       </div>
 
@@ -560,10 +600,17 @@ export default function Screen() {
           >
             <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-6">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em]" style={{ color: neutral }}>
-                  Northgate Ops workspace
+                <p
+                  className="text-[11px] font-bold uppercase tracking-[0.22em]"
+                  style={{ color: neutral }}
+                >
+                  Workspace
                 </p>
-                <h2 id="new-project-title" className="mt-1 text-[24px] font-bold tracking-[-0.02em]" style={{ fontFamily: brand.fontHeading }}>
+                <h2
+                  id="new-project-title"
+                  className="mt-1 text-[24px] font-bold tracking-[-0.02em]"
+                  style={{ fontFamily: brand.fontHeading }}
+                >
                   New project
                 </h2>
               </div>
@@ -582,7 +629,10 @@ export default function Screen() {
             <form onSubmit={handleCreate} noValidate>
               <div className="space-y-5 px-6 py-6">
                 <div>
-                  <Label htmlFor="project-name" className="block text-[11px] font-bold uppercase tracking-[0.18em]">
+                  <Label
+                    htmlFor="project-name"
+                    className="block text-[11px] font-bold uppercase tracking-[0.18em]"
+                  >
                     Name <span style={{ color: accent }}>(required)</span>
                   </Label>
                   <Input
@@ -595,7 +645,9 @@ export default function Screen() {
                       if (error) setError(null);
                     }}
                     aria-invalid={error && error.field === "name" ? "true" : undefined}
-                    aria-describedby={error && error.field === "name" ? "project-name-error" : "project-name-hint"}
+                    aria-describedby={
+                      error && error.field === "name" ? "project-name-error" : "project-name-hint"
+                    }
                     placeholder="e.g. Partner Portal Launch"
                     className="ob-focus mt-2 h-11 w-full text-[14px]"
                     style={{
@@ -606,19 +658,40 @@ export default function Screen() {
                     }}
                   />
                   {error && error.field === "name" ? (
-                    <p id="project-name-error" className="mt-2 flex items-start gap-1.5 text-[12px] font-bold leading-[1.5]" style={{ color: accent }}>
+                    <p
+                      id="project-name-error"
+                      className="mt-2 flex items-start gap-1.5 text-[12px] font-bold leading-[1.5]"
+                      style={{ color: accent }}
+                    >
                       <AlertCircle className="mt-[1px] h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                       {error.message}
                     </p>
                   ) : (
-                    <p id="project-name-hint" className="mt-2 text-[12px]" style={{ color: neutral }}>
+                    <p
+                      id="project-name-hint"
+                      className="mt-2 text-[12px]"
+                      style={{ color: neutral }}
+                    >
                       Everyone on the team will see this name in the projects overview.
                     </p>
                   )}
+                  {error && error.field === "api" ? (
+                    <p
+                      role="alert"
+                      className="mt-2 flex items-start gap-1.5 text-[12px] font-bold leading-[1.5]"
+                      style={{ color: accent }}
+                    >
+                      <AlertCircle className="mt-[1px] h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      {error.message}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div>
-                  <Label htmlFor="project-description" className="block text-[11px] font-bold uppercase tracking-[0.18em]">
+                  <Label
+                    htmlFor="project-description"
+                    className="block text-[11px] font-bold uppercase tracking-[0.18em]"
+                  >
                     Description
                   </Label>
                   <Textarea
@@ -630,24 +703,40 @@ export default function Screen() {
                     placeholder="What this project covers, and when it has to land."
                     aria-describedby="project-description-hint"
                     className="ob-focus mt-2 w-full p-3 text-[14px] leading-[1.55]"
-                    style={{ border: "2px solid " + primary, borderRadius: brand.radius, backgroundColor: brand.backgroundColor, color: primary }}
+                    style={{
+                      border: "2px solid " + primary,
+                      borderRadius: brand.radius,
+                      backgroundColor: brand.backgroundColor,
+                      color: primary,
+                    }}
                   />
-                  <p id="project-description-hint" className="mt-2 text-[12px]" style={{ color: neutral }}>
+                  <p
+                    id="project-description-hint"
+                    className="mt-2 text-[12px]"
+                    style={{ color: neutral }}
+                  >
                     Optional. You can edit it later from the project workspace.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3 px-6 pb-6 pt-1" style={{ borderTop: "1px solid " + hair }}>
+              <div
+                className="flex items-center justify-between gap-3 px-6 pb-6 pt-1"
+                style={{ borderTop: "1px solid " + hair }}
+              >
                 <p className="text-[12px] pt-4" style={{ color: neutral }}>
-                  Created by you · 26 Oct 2026
+                  Visible to the whole team once saved
                 </p>
                 <div className="flex items-center gap-2 pt-4">
                   <Button
                     type="button"
                     onClick={closeModal}
                     className="ob-focus h-11 bg-transparent px-4 text-[13px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: primary, border: "2px solid " + primary, borderRadius: brand.radius }}
+                    style={{
+                      color: primary,
+                      border: "2px solid " + primary,
+                      borderRadius: brand.radius,
+                    }}
                   >
                     Cancel
                   </Button>
@@ -656,7 +745,12 @@ export default function Screen() {
                     data-wf="i-4-0-2"
                     disabled={creating}
                     className="ob-focus inline-flex h-11 items-center gap-2 px-5 text-[13px] font-bold uppercase tracking-[0.12em] disabled:opacity-60"
-                    style={{ backgroundColor: primary, color: brand.backgroundColor, border: "2px solid " + primary, borderRadius: brand.radius }}
+                    style={{
+                      backgroundColor: primary,
+                      color: brand.backgroundColor,
+                      border: "2px solid " + primary,
+                      borderRadius: brand.radius,
+                    }}
                   >
                     {creating ? (
                       <React.Fragment>
@@ -677,5 +771,13 @@ export default function Screen() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Screen() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ScreenInner />
+    </QueryClientProvider>
   );
 }

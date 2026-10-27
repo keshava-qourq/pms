@@ -4,6 +4,8 @@ One pair per entity in the approved data model, plus the placeholder every
 generated route returns until it has been implemented.
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -18,3 +20,129 @@ class StubResponse(BaseModel):
     endpoint: str
     status: str = "not_implemented"
     detail: str = "Scaffolded from the approved API spec; no behaviour yet."
+
+
+class LoginRequest(BaseModel):
+    """{email, password} as POST /auth/login expects."""
+
+    email: str
+    password: str
+
+
+class UserOut(BaseModel):
+    """The member profile returned by /auth/login and /auth/me."""
+
+    id: str
+    email: str
+    name: str | None = None
+    is_admin: bool
+
+    class Config:
+        from_attributes = True
+
+
+class LoginResponse(BaseModel):
+    """What POST /auth/login (and accept-invite) returns on success."""
+
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
+
+
+class InvitationCreate(BaseModel):
+    """{email} as POST /invitations expects."""
+
+    email: str
+
+
+class InvitationOut(BaseModel):
+    """The invitation record returned by POST /invitations."""
+
+    id: str
+    email: str
+    status: str
+    invited_by: str
+    expires_at: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AcceptInviteRequest(BaseModel):
+    """{token, password, name?} as POST /auth/accept-invite expects."""
+
+    token: str
+    password: str
+    name: str | None = None
+
+
+class ProjectCreate(BaseModel):
+    """{name, description?} as POST /projects expects."""
+
+    name: str
+    description: str | None = None
+
+
+class ProjectUpdate(BaseModel):
+    """{name?, description?} as PATCH /projects/{id} expects."""
+
+    name: str | None = None
+    description: str | None = None
+
+
+class ProjectOut(BaseModel):
+    """The project record returned by the /projects routes."""
+
+    id: str
+    name: str
+    description: str | None = None
+    status: str
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ProjectSummary(BaseModel):
+    """What GET /projects returns: a project plus its task counts."""
+
+    project: ProjectOut
+    task_total: int
+    task_complete: int
+
+
+class TaskCreate(BaseModel):
+    """{title, description?, status?, assignee_id?} as POST /projects/{id}/tasks expects."""
+
+    title: str
+    description: str | None = None
+    status: str | None = None
+    assignee_id: str | None = None
+
+
+class TaskUpdate(BaseModel):
+    """{title?, description?, status?, assignee_id?} as PATCH /tasks/{id} expects."""
+
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None
+    assignee_id: str | None = None
+
+
+class TaskOut(BaseModel):
+    """The task record returned by the /tasks and /projects/{id}/tasks routes."""
+
+    id: str
+    project_id: str
+    title: str
+    description: str | None = None
+    status: str
+    assignee_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

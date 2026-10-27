@@ -1,0 +1,72 @@
+{
+  "architecture_npm": [
+    "@dnd-kit/core",
+    "@tanstack/react-query"
+  ],
+  "key": {
+    "app_design_id": "8214f9aa-1e8c-448c-a9ab-ab1915e289e8",
+    "app_design_version": 1,
+    "architecture_document_id": "89a24a70-bac4-416a-854b-705c07923378",
+    "architecture_version": 1
+  },
+  "outcome": "prepared",
+  "packages": [
+    {
+      "ecosystem": "pypi",
+      "installed_version": "1.7.4",
+      "name": "passlib",
+      "status": "installed",
+      "version": ">=1.7.4"
+    },
+    {
+      "ecosystem": "pypi",
+      "installed_version": "2.15.1",
+      "name": "PyJWT",
+      "status": "installed",
+      "version": ">=2.8.0"
+    },
+    {
+      "ecosystem": "pypi",
+      "installed_version": "5.6.3",
+      "name": "celery",
+      "status": "installed",
+      "version": ">=5.3"
+    },
+    {
+      "ecosystem": "pypi",
+      "installed_version": "8.1.0",
+      "name": "redis",
+      "status": "installed",
+      "version": ">=5.0"
+    },
+    {
+      "ecosystem": "pypi",
+      "installed_version": "6.12.5",
+      "name": "sendgrid",
+      "status": "installed",
+      "version": ">=6.11"
+    },
+    {
+      "ecosystem": "pypi",
+      "error": "already provided by the scaffold",
+      "name": "httpx",
+      "status": "skipped",
+      "version": ">=0.27"
+    },
+    {
+      "ecosystem": "npm",
+      "installed_version": "6.3.1",
+      "name": "@dnd-kit/core",
+      "status": "installed",
+      "version": ">=6.1"
+    },
+    {
+      "ecosystem": "npm",
+      "installed_version": "5.105.0",
+      "name": "@tanstack/react-query",
+      "status": "installed",
+      "version": ">=5.0"
+    }
+  ],
+  "prepared_by_run": "c07d2bca-7856-457d-85dd-e65a04089911"
+}

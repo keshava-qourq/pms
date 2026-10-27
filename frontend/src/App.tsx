@@ -1,6 +1,7 @@
-import { NavLink, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { NavLink, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 
 import { Icons } from "@/lib/icons";
+import { isAuthenticated } from "@/lib/api";
 import SignIn from "@/screens/SignIn";
 import AcceptInvite from "@/screens/AcceptInvite";
 import Projects from "@/screens/Projects";
@@ -13,6 +14,16 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     "flex items-center gap-2 rounded-[var(--brand-radius)] px-3 py-2 text-sm font-medium transition-colors",
     isActive ? "bg-[var(--brand-hover)] text-[var(--brand-fg)]" : "text-[var(--brand-fg-muted)]",
   ].join(" ");
+
+// Guards every project/task route: a visitor who is not signed in is sent to /sign-in,
+// carrying the page they asked for so sign-in can return them there (AC-003, NFR-001).
+function RequireAuth() {
+  const location = useLocation();
+  if (!isAuthenticated()) {
+    return <Navigate to="/sign-in" replace state={{ from: location }} />;
+  }
+  return <Outlet />;
+}
 
 // The app's menu, drawn around every screen except the ones routed outside it below.
 function AppShellLayout() {
@@ -54,11 +65,13 @@ function AppShellLayout() {
 export default function App() {
   return (
     <Routes>
-      <Route element={<AppShellLayout />}>
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/project" element={<Project />} />
-        <Route path="/task" element={<Task />} />
-        <Route path="/team" element={<Team />} />
+      <Route element={<RequireAuth />}>
+        <Route element={<AppShellLayout />}>
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/project" element={<Project />} />
+          <Route path="/task" element={<Task />} />
+          <Route path="/team" element={<Team />} />
+        </Route>
       </Route>
       <Route path="/sign-in" element={<SignIn />} />
       <Route path="/accept-invite" element={<AcceptInvite />} />
