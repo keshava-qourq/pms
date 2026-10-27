@@ -10,10 +10,15 @@ per-project role narrows what a signed-in member can see or edit (AC-007,
 AC-008). Tasks (US-003-2) are implemented the same way:
 `GET/POST /projects/{id}/tasks` and `GET/PATCH /tasks/{id}` are editable by
 any signed-in member regardless of who created the task or its project
-(AC-008). Every other route -- except `/health`, `/auth/login` and
-`/auth/accept-invite` -- is guarded by the shared `get_current_user`
-dependency (NFR-001). Everything else here is still the typed `StubResponse`
-placeholder until its own ticket implements it.
+(AC-008). `POST /projects/{id}/tasks` and `PATCH /tasks/{id}` enqueue the
+Slack/email notification jobs (US-006) via `enqueue_notification` rather than
+calling out inline, so the save never waits on -- or fails because of --
+Slack, SendGrid or even a briefly unreachable broker (NFR-004); see
+`app/tasks.py` for the jobs themselves. Every other route -- except
+`/health`, `/auth/login` and `/auth/accept-invite` -- is guarded by the
+shared `get_current_user` dependency (NFR-001). Everything else here is
+still the typed `StubResponse` placeholder until its own ticket implements
+it.
 """
 
 import secrets
@@ -44,7 +49,12 @@ from app.schemas import (
     UserOut,
 )
 from app.security import create_access_token, hash_password, verify_password
-from app.tasks import send_invitation_email
+from app.tasks import (
+    enqueue_notification,
+    notify_task_created,
+    notify_task_updated,
+    send_invitation_email,
+)
 
 INVITATION_EXPIRY_DAYS = 7
 TASK_COMPLETE_STATUS = "done"
@@ -84,6 +94,15 @@ def _get_task_or_404(db: Session, id: str) -> Task:
     if task is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return task
+
+
+def _validate_owner_id(db: Session, owner_id: str | None) -> None:
+    """422 when `owner_id` is set but names no member (AC-016)."""
+    if owner_id is not None and db.get(User, owner_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unknown owner_id",
+        )
 
 
 # ---- auth ------------------------------------------------------------------
@@ -307,23 +326,29 @@ async def create_task(
     current_user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> TaskOut:
-    """{title, description?, status?, assignee_id?} -> {task}, 201.
+    """{title, description?, status?, owner_id?, due_date?} -> {task}, 201.
 
-    JWT required, 404 for an unknown project. Enqueues an outbound
-    notification once implemented (US-006) -- see `app/celery_app.py` for the
-    shared Celery instance.
+    JWT required, 404 for an unknown project, 422 for an unknown owner_id
+    (AC-016). Enqueues `notify_task_created` (US-006) rather than calling
+    Slack/SendGrid inline, so the save returns without waiting on either, or
+    failing because of them (NFR-004).
     """
     _get_project_or_404(db, id)
+    _validate_owner_id(db, payload.owner_id)
     task = Task(
         project_id=id,
         title=payload.title,
         description=payload.description,
         status=payload.status or "todo",
-        assignee_id=payload.assignee_id,
+        owner_id=payload.owner_id,
+        due_date=payload.due_date,
     )
     db.add(task)
     db.commit()
     db.refresh(task)
+
+    enqueue_notification(notify_task_created, task.id)
+
     return TaskOut.model_validate(task)
 
 
@@ -346,25 +371,40 @@ async def update_task(
     current_user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> TaskOut:
-    """{title?, description?, status?, assignee_id?} -> {task}.
+    """{title?, description?, status?, owner_id?, due_date?} -> {task}.
 
-    JWT required. Any signed-in member may save edits, including one who did
-    not create the task or its project (AC-008): there is no ownership
-    check. Enqueues an outbound notification once implemented (US-007).
+    JWT required, 422 for an unknown owner_id (AC-016). Any signed-in member
+    may save edits, including one who did not create the task or its
+    project (AC-008): there is no ownership check. Enqueues
+    `notify_task_updated` with the fields that actually changed (US-006),
+    rather than calling Slack/SendGrid inline (NFR-004).
     """
     task = _get_task_or_404(db, id)
-    if payload.title is not None:
+    _validate_owner_id(db, payload.owner_id)
+    changed_fields: list[str] = []
+    if payload.title is not None and payload.title != task.title:
         task.title = payload.title
-    if payload.description is not None:
+        changed_fields.append("title")
+    if payload.description is not None and payload.description != task.description:
         task.description = payload.description
-    if payload.status is not None:
+        changed_fields.append("description")
+    if payload.status is not None and payload.status != task.status:
         task.status = payload.status
-    if payload.assignee_id is not None:
-        task.assignee_id = payload.assignee_id
+        changed_fields.append("status")
+    if payload.owner_id is not None and payload.owner_id != task.owner_id:
+        task.owner_id = payload.owner_id
+        changed_fields.append("owner_id")
+    if payload.due_date is not None and payload.due_date != task.due_date:
+        task.due_date = payload.due_date
+        changed_fields.append("due_date")
     task.updated_at = datetime.now(UTC)
     db.add(task)
     db.commit()
     db.refresh(task)
+
+    if changed_fields:
+        enqueue_notification(notify_task_updated, task.id, changed_fields)
+
     return TaskOut.model_validate(task)
 
 

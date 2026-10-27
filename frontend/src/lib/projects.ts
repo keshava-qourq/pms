@@ -1,4 +1,4 @@
-// react-query hooks for the live /projects and /tasks endpoints (US-003-3).
+// react-query hooks for the live /projects and /tasks endpoints (US-003-3, US-006-3).
 // Shapes follow docs/sdlc/architecture/api/openapi.yaml.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -28,6 +28,35 @@ export type Task = {
   status: string;
   created_at: string;
   updated_at: string;
+};
+
+export type Comment = {
+  id: string;
+  task_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+};
+
+export type ChecklistItem = {
+  id: string;
+  task_id: string;
+  title: string;
+  is_complete: boolean;
+  position: number;
+};
+
+export type TaskLabel = {
+  id: string;
+  name: string;
+  color?: string;
+};
+
+export type TaskDetail = {
+  task: Task;
+  comments: Comment[];
+  checklist: ChecklistItem[];
+  labels: TaskLabel[];
 };
 
 export function useProjects() {
@@ -93,6 +122,10 @@ export function useCreateTask(id: string | null) {
   });
 }
 
+// `projectId` may be null when the caller (e.g. the task detail screen) does
+// not yet know which project the task belongs to; the project-tasks
+// invalidation is then a no-op, but the single-task cache below still keeps
+// list, board and detail in sync (AC-018/AC-019, NFR-007).
 export function useUpdateTask(projectId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -107,8 +140,17 @@ export function useUpdateTask(projectId: string | null) {
       title?: string;
       description?: string;
     }) => apiFetch<Task>(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["projects", projectId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks", variables.id] });
     },
+  });
+}
+
+export function useTask(id: string | null) {
+  return useQuery({
+    queryKey: ["tasks", id],
+    queryFn: () => apiFetch<TaskDetail>(`/tasks/${id}`),
+    enabled: Boolean(id),
   });
 }

@@ -129,3 +129,92 @@ test("[NFR-006] the projects overview renders usably at a 375px mobile viewport"
   const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(scrollWidth).toBeLessThanOrEqual(400);
 });
+
+test("[AC-012][AC-013] the dashboard lists a project's name and task progress, and selecting it opens its tasks", async ({
+  page,
+}) => {
+  const projectName = `Overview Progress ${Date.now()}`;
+  const taskTitle = `Progress task ${Date.now()}`;
+
+  await signIn(page, MEMBER_A_EMAIL, MEMBER_A_PASSWORD);
+
+  await page.getByRole("button", { name: "New project" }).click();
+  await page.getByLabel(/project name/i).fill(projectName);
+  await page.getByRole("button", { name: /create/i }).click();
+  await expect(page.getByText(projectName)).toBeVisible({ timeout: 10_000 });
+
+  // Isolate the row by filtering the search to this project's name.
+  await page.getByLabel("Search projects").fill(projectName);
+  const row = page.locator("li", { hasText: projectName });
+  await expect(row).toBeVisible({ timeout: 10_000 });
+  // Progress is shown as "N of M tasks complete" for a freshly created,
+  // task-less project (AC-012).
+  await expect(row.getByText(/0 of 0 tasks complete/i)).toBeVisible();
+
+  // Selecting the project navigates into its tasks (AC-013).
+  await row.getByText(projectName).click();
+  await expect(page).toHaveURL(/\/project$/, { timeout: 5000 });
+
+  await page.getByRole("button", { name: /new task|add task/i }).click();
+  await page.getByLabel(/title/i).first().fill(taskTitle);
+  await page.getByRole("button", { name: /create/i }).click();
+  await expect(page.getByText(taskTitle)).toBeVisible({ timeout: 10_000 });
+
+  // Back on the dashboard, the progress count reflects the new task.
+  await page.goto("/projects");
+  await page.getByLabel("Search projects").fill(projectName);
+  const updatedRow = page.locator("li", { hasText: projectName });
+  await expect(updatedRow.getByText(/0 of 1 tasks complete/i)).toBeVisible({ timeout: 10_000 });
+});
+
+test("[AC-014] with no projects in the workspace, the empty state invites creating the first project", async ({
+  page,
+}) => {
+  // Mocks the network response for this page only (no real database
+  // mutation, so this does not disturb other specs running in parallel) to
+  // exercise the zero-projects branch of the overview, which the shared
+  // seeded database never reaches on its own.
+  await page.route("**/projects", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    } else {
+      await route.continue();
+    }
+  });
+
+  await signIn(page, MEMBER_A_EMAIL, MEMBER_A_PASSWORD);
+
+  await expect(page.getByText(/no projects yet/i)).toBeVisible({ timeout: 10_000 });
+  await expect(
+    page.getByText(/create the first project to start organizing the team's work/i),
+  ).toBeVisible();
+  // The empty state itself offers a way to create the first project.
+  await expect(page.getByRole("button", { name: "New project" }).last()).toBeVisible();
+});
+
+test("[AC-010] submitting the new-project form with a blank name shows an inline prompt and creates nothing", async ({
+  page,
+}) => {
+  let createCalled = false;
+  await page.route("**/projects", async (route) => {
+    if (route.request().method() === "POST") {
+      createCalled = true;
+    }
+    await route.continue();
+  });
+
+  await signIn(page, MEMBER_A_EMAIL, MEMBER_A_PASSWORD);
+
+  await page.getByRole("button", { name: "New project" }).click();
+  // Leave the name field blank and submit.
+  await page.getByRole("button", { name: /create/i }).click();
+
+  await expect(page.getByText(/give the project a name before you create it/i)).toBeVisible();
+  expect(createCalled).toBe(false);
+
+  // Whitespace-only is treated the same as blank.
+  await page.getByLabel(/project name/i).fill("   ");
+  await page.getByRole("button", { name: /create/i }).click();
+  await expect(page.getByText(/give the project a name before you create it/i)).toBeVisible();
+  expect(createCalled).toBe(false);
+});

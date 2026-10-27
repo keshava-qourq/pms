@@ -5,14 +5,16 @@
 email; a pending invitation's token is emailed out-of-band and accepted once
 via `POST /auth/accept-invite`. `projects` and `tasks` (US-003) are
 workspace-wide: no owner or privacy filter narrows what a signed-in member
-can see or edit. Schema changes go through the Alembic migration in
-`backend/alembic/versions/`, not `Base.metadata.create_all`.
+can see or edit. `tasks.owner_id` and `tasks.due_date` (US-006) were added by
+migrating the original `assignee_id` column rather than adding a second one.
+Schema changes go through the Alembic migration in `backend/alembic/versions/`,
+not `Base.metadata.create_all`.
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -71,7 +73,8 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="todo")
-    assignee_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    owner_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
