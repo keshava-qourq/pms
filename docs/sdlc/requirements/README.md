@@ -5,146 +5,229 @@
 <!-- sdlc:auto:start narrative -->
 ## Summary
 
-### US-001 · approved · source: requirements:US-001
+### SCOPE-001 · approved · source: requirements:scope
 
-Registered team members sign in with email and password to reach the projects overview; unauthenticated access to project/task pages redirects to sign-in.
+PMS v2 is a lightweight MVP project management tool for an internal team of up to ~25 users managing a few dozen active projects. Scope covers sign-in, projects, tasks, Kanban/list views, comments, checklists, and labels.
 
-Critical priority. AC-001: correct email+password authenticates and lands on the projects overview. AC-002: wrong credentials show an invalid-credentials error and the user stays signed out. AC-003: unauthenticated direct access to any project or task page redirects to the sign-in page. NFR-001 reinforces that project/task pages are only reachable when signed in. Assumption stated in input: email/password only, no SSO/SAML in v1.
+Delivery scope: lightweight. Requirements version: 2. Capabilities in scope: team member sign-in (email/password only, no SSO), projects to organize work, tasks with owners/due dates/statuses, Kanban board view, task list view, task comments, checklists/subtasks, labels, projects overview dashboard. Out of scope (explicitly excluded, not to be designed or built): native iOS/Android mobile apps; two-way sync with external systems such as Jira, GitHub, calendars, or file storage.
 
-**Related:** EPIC-001, NFR-001
+**Related:** US-001, US-002, US-003, US-004, US-005, US-006, US-007, US-008, US-009, US-010, US-011, US-012
 
-### US-002 · approved · source: requirements:US-002
+### TECH-STACK-001 · approved · source: requirements:tech-stack
 
-Administrators invite new team members by email; the invite function is hidden from non-admins and duplicate invites are blocked.
+Product owner approved an exact technology stack: FastAPI 0.115 backend, AWS cloud, PostgreSQL 16 database, React 19 frontend. Instruction is to design against exactly these, no substitutions.
 
-High priority. AC-004: admin enters a colleague's email, invitation is recorded, invitee can set a password to create an account. AC-005: a non-admin member cannot see/use the invite function. AC-006: inviting an email that already belongs to a member is blocked with a message that the member already exists. NFR-002 restricts invitations to administrators and requires duplicate-account prevention.
+Backend: FastAPI 0.115 -- chosen for straightforward project/task storage, flat 'everyone can edit everything' access with a basic admin tier, and one-way webhook/email fan-out, plus automatic API docs. Cloud: AWS -- managed PostgreSQL, S3 for task file attachments, and app hosting in one vendor; scales down for 25 users and up as the company grows. Database: PostgreSQL 16 -- models relational data (projects, tasks, owners, due dates, comments, checklists, labels, timeline dependencies) and activity history; comfortably sized for a few dozen projects / 25 users. Frontend: React 19 -- supports three interchangeable views (Kanban, list, Gantt/timeline) with drag-and-drop, inline comments, checklists, live updates, single codebase for desktop/mobile browsers (responsive web only, no native apps).
 
-**Related:** EPIC-001, NFR-002
+**Related:** US-001, US-004, US-006, US-008, US-009
 
-- ⚠ How the very first administrator account is created/designated is not specified anywhere in the input.
+- ⚠ Conflict: this stack's rationale describes S3 for 'task file attachments' and PostgreSQL modeling 'timeline dependencies between tasks' and 'activity history', but the requirements explicitly scope file attachments, Gantt/timeline dependencies, and activity history OUT of this MVP (see EPIC-003 and EPIC-005 assumptions). Needs reconciliation: either the tech rationale is written for the broader future vision rather than this MVP, or scope is understated.
+- ⚠ Backend rationale states it 'fans updates out to Slack and email', but no user story in this requirements set describes task/project update notifications to Slack or email (only US-002 admin-invite email is covered). Gap: notification-trigger requirements are undocumented.
 
-### US-003 · approved · source: requirements:US-003
+### SERVICES-001 · approved · source: requirements:services
 
-Every signed-in member can view and edit every project and task regardless of who created it; no per-project roles or privacy exist beyond admin invite rights.
+Product owner approved four runtime services: Amazon S3 for file storage, SendGrid for email, Redis as a background queue, and Slack via incoming webhook for chat updates.
 
-High priority. AC-007: any signed-in member sees every project in the workspace in the projects overview. AC-008: editing a task or project not created by the member still saves, because access is flat and equal. NFR-008 explicitly flags this flat-access model as an accepted privacy risk.
+File storage: Amazon S3 (saas; env AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET) -- for task file attachments, kept out of the database. Email: SendGrid (saas; env SENDGRID_API_KEY) -- sends email notifications and admin invites. Queue: Redis (container redis:7-alpine, used as a queue) -- backgrounds Slack/email side-effects so saving a task isn't blocked, with retry if Slack/email is briefly down. Chat: Slack (custom; env SLACK_WEBHOOK_URL) -- pushes updates to the team's Slack channel via incoming webhook. Full required API key/env list: AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SECRET_ACCESS_KEY, REDIS_URL, S3_BUCKET, SENDGRID_API_KEY, SLACK_WEBHOOK_URL.
 
-**Related:** EPIC-001, NFR-008
+**Related:** US-002, US-010
 
-- ⚠ NFR-008 is an accepted risk (no per-project privacy/roles) -- should be revisited if the team grows or starts handling sensitive data.
+- ⚠ Conflict: S3 file storage is justified by 'task file attachments', which the requirements (EPIC-003, EPIC-005) explicitly defer out of this MVP scope. No in-scope user story currently requires file upload/storage.
+- ⚠ No user story describes what triggers a Slack message or an email notification (beyond the admin invite email in US-002) -- the 'fan out updates' behavior implied by this service and the backend rationale is undocumented at the requirement level.
+- ⚠ 'Admin tier' for invite-only privilege is referenced in tech rationale but no requirement defines whether admins have any other special capability beyond inviting (see US-003 gap).
 
-### US-004 · approved · source: requirements:US-004
+### EPIC-001 · draft · source: requirements:EPIC-001
 
-Members create and edit projects with a name and description; a name is required to create one.
+Authentication and Team Membership: internal team members sign in; an administrator invites new members by email. Access is flat -- every signed-in member can see and edit all projects/tasks, with the admin distinguished only by invite capability.
 
-Critical priority. AC-009: creating a project with a name saves it and shows it in the projects overview for the whole team. AC-010: submitting without a name is rejected and the member is prompted to supply one. AC-011: editing an existing project's name or description saves and shows the updated details to all team members.
+Assumption surfaced during requirements gathering: authentication is email/password with admin-invites by email; no SSO/SAML in v1. Company operates in a single region with no special regulatory/data-residency requirements for general-industry internal tooling. Covers US-001 (sign in), US-002 (admin invites), US-003 (flat/equal access), and US-013 (monochrome theme for sign-in/invite screens).
+
+**Related:** US-001, US-002, US-003, US-013
+
+- ⚠ No regulated industry or compliance domain was named for this project, so no regulatory traceability obligations apply per the stated assumption -- confirm this remains true before architecture/design.
+
+### EPIC-002 · draft · source: requirements:EPIC-002
+
+Projects: work is organized into projects containing tasks; a projects overview dashboard gives an at-a-glance view of the few dozen active projects for the ~25-person team.
+
+Covers US-004 (create/manage project), US-005 (projects overview dashboard), and US-014 (monochrome theme for dashboard and project create/edit screens). System is explicitly sized for up to ~25 users and a few dozen active projects.
+
+**Related:** US-004, US-005, US-014
+
+### EPIC-003 · draft · source: requirements:EPIC-003
+
+Tasks: each project contains tasks with an owner, due date, and status that moves through a workflow -- the shared unit of work the team collaborates on.
+
+Assumption surfaced during requirements gathering: at Lightweight MVP scope, a task's core attributes are owner, due date, and status only. Timeline/Gantt views, task dependencies, milestones, file attachments, and activity history discussed in the broader product vision are explicitly deferred to a later version. Covers US-006 (create task), US-007 (update task status/details), and US-015 (monochrome theme for task create/edit screens).
+
+**Related:** US-006, US-007, US-015
+
+- ⚠ Deferred-to-later items (timeline/Gantt, dependencies, milestones, file attachments, activity history) are explicitly out of this MVP -- see conflict noted in TECH-STACK-001/SERVICES-001 regarding S3 attachments and PostgreSQL dependency/activity-history rationale being written against the broader (not MVP) scope.
+
+### EPIC-004 · draft · source: requirements:EPIC-004
+
+Task Views: the same tasks can be viewed interchangeably as a Kanban board or a task list; changes in one view reflect in the other because both operate over the same underlying tasks.
+
+Assumption surfaced during requirements gathering: the timeline/Gantt view with dependencies and milestones from the broader vision is beyond this Lightweight MVP and not included. Covers US-008 (Kanban board), US-009 (task list), US-016 (monochrome theme + status distinction for Kanban), and US-017 (visual regression/accessibility QA check across all delivered screens).
+
+**Related:** US-008, US-009, US-016, US-017
+
+### EPIC-005 · draft · source: requirements:EPIC-005
+
+Task Collaboration: team members collaborate in context on individual tasks through comments, checklists/subtasks, and labels.
+
+Assumption surfaced during requirements gathering: comments, checklists/subtasks, and labels are assumed standard collaboration features rather than explicitly confirmed by the product owner. File attachments and a full activity history, also mentioned in the broader vision, are beyond Lightweight MVP scope and not included in this version. Covers US-010 (comments), US-011 (checklists/subtasks), US-012 (labels).
+
+**Related:** US-010, US-011, US-012
+
+- ⚠ Comments/checklists/labels are flagged as assumed rather than explicitly confirmed -- recommend product-owner sign-off before architecture locks these in.
+- ⚠ File attachments and activity history are deferred here, reinforcing the conflict with the approved tech stack/services rationale (S3 for attachments, PostgreSQL for activity history) documented in TECH-STACK-001/SERVICES-001.
+
+### US-001 · draft · source: requirements:US-001
+
+Team members sign in with email and password to securely access the team's projects and tasks. Critical priority.
+
+AC-001: correct email+password on sign-in submit authenticates the user and routes to the projects overview. AC-002: non-matching email/password shows an 'invalid credentials' error, no sign-in. AC-003: unauthenticated direct access to any project/task page redirects to sign-in.
+
+**Related:** EPIC-001
+
+### US-002 · draft · source: requirements:US-002
+
+An administrator invites new team members by email so colleagues can join and collaborate. High priority.
+
+AC-004: admin enters a colleague's email and sends an invite; invitation is recorded, invitee can set a password to create an account. AC-005: non-admin signed-in members do not see the invite-member function. AC-006: inviting an email that already belongs to an existing member is prevented, admin is informed of the duplicate.
+
+**Related:** EPIC-001, US-001
+
+### US-003 · draft · source: requirements:US-003
+
+Every signed-in team member can see and edit every project and task -- access is flat and equal with no per-project privacy or roles beyond basic admin functions. High priority.
+
+AC-007: any signed-in member sees every project in the workspace regardless of creator, on the projects overview. AC-008: any signed-in member can edit a task/project they did not create, and the change saves, because access is flat with no per-project restrictions beyond basic admin functions.
+
+**Related:** EPIC-001, US-001, US-002
+
+- ⚠ Admin's distinguishing power is stated only as 'invite new members' (US-002); no other admin-only capability is defined anywhere in this input -- confirm whether admin has any other function before architecture defines roles/permissions.
+
+### US-004 · draft · source: requirements:US-004
+
+A team member creates a project and edits its details to organize related tasks under one project. Critical priority.
+
+AC-009: creating a project with a name saves it and it appears in the projects overview for the whole team. AC-010: submitting without a name blocks creation and prompts for a name. AC-011: editing name/description saves the update and shows it to all team members.
 
 **Related:** EPIC-002
 
-### US-005 · approved · source: requirements:US-005
+### US-005 · draft · source: requirements:US-005
 
-A projects overview dashboard lists all projects with a progress summary, lets members navigate into a project, and shows an empty state when none exist.
+A dashboard lists all projects with key status so the team can quickly see what's active and navigate in. High priority.
 
-High priority. AC-012: dashboard shows each project with name and task progress (e.g. number of tasks and how many are complete). AC-013: selecting a project opens that project's tasks. AC-014: with no projects created, an empty state invites the member to create the first one.
+AC-012: dashboard shows each project with a summary (name, task progress e.g. count complete/total). AC-013: selecting a project navigates to that project's tasks. AC-014: with zero projects, an empty state invites the user to create the first project.
 
 **Related:** EPIC-002, US-004
 
-### US-006 · approved · source: requirements:US-006
+### US-006 · draft · source: requirements:US-006
 
-Members create tasks within a project with a title, and can assign an owner, due date, and status; a title is required.
+A team member creates a task within a project and assigns an owner, due date, and status so responsibility and timing are clear. Critical priority.
 
-Critical priority. AC-015: a task with a title is added to the project and appears in its task views. AC-016: owner, due date, and status are assigned at creation or edit time and saved/shown on the task. AC-017: submitting without a title is rejected with a prompt. Assumption stated in input: MVP task attributes are limited to owner/due date/status -- dependencies, milestones, attachments, and activity history from the broader vision are deferred to a later version.
+AC-015: creating a task with a title adds it to the project and it appears in its task views. AC-016: assigning owner, due date, and status on create/edit saves and displays all three on the task. AC-017: submitting without a title blocks creation and prompts for a title.
 
 **Related:** EPIC-003
 
-### US-007 · approved · source: requirements:US-007
+### US-007 · draft · source: requirements:US-007
 
-Members update a task's status, owner, or due date as work progresses, with changes reflected consistently across every view.
+A team member changes a task's status, owner, or due date as work progresses so the task reflects current state. High priority.
 
-High priority. AC-018: changing status saves the new status and reflects it consistently across all views. AC-019: reassigning the owner or changing the due date saves and is visible to all team members. NFR-007 requires that a change made in one view (board or list) is reflected consistently in the other.
+AC-018: changing status to another valid status saves it and reflects consistently across all views. AC-019: reassigning owner or changing due date saves and is visible to all team members.
 
-**Related:** EPIC-003, NFR-007, US-008, US-009
+**Related:** EPIC-003, US-006
 
-### US-008 · approved · source: requirements:US-008
+### US-008 · draft · source: requirements:US-008
 
-A Kanban board groups a project's tasks into columns by status, and dragging a card to another column updates that task's status.
+A team member views a project's tasks as a Kanban board grouped by status, managing workflow by dragging cards between columns. Critical priority.
 
-Critical priority. AC-020: each task appears as a card in the column matching its current status. AC-021: moving a card to a different column updates the task's status and the change persists. Shares the same underlying task data as the list view per NFR-007.
+AC-020: tasks appear as cards in the column matching their status. AC-021: moving a card to a different status column updates and persists the task's status.
 
-**Related:** EPIC-004, NFR-007, US-009
+**Related:** EPIC-004, US-006, US-007
 
-### US-009 · approved · source: requirements:US-009
+### US-009 · draft · source: requirements:US-009
 
-A task list view shows each task in a compact row with title, owner, due date, and status, staying in sync with the Kanban board.
+A team member views a project's tasks as a list showing owner, due date, and status to scan/manage tasks in compact tabular form. High priority.
 
-High priority. AC-022: each task row shows title, owner, due date, and status. AC-023: updating a task in the list view is reflected on the Kanban board because both views share the same underlying tasks (NFR-007).
+AC-022: list view shows each task in a row with title, owner, due date, status. AC-023: updating a task in list view reflects on the Kanban board because both views share the same underlying tasks.
 
-**Related:** EPIC-004, NFR-007, US-008
+**Related:** EPIC-004, US-008
 
-### US-010 · approved · source: requirements:US-010
+### US-010 · draft · source: requirements:US-010
 
-Members post comments on a task, shown with author name and timestamp in chronological order; empty comments are rejected.
+A team member posts comments on a task so the team can discuss the work in context. High priority.
 
-High priority. AC-024: a posted comment is saved and shown with the author's name and timestamp to everyone viewing the task. AC-025: comments display in chronological order. AC-026: submitting an empty comment saves nothing and prompts the member to enter text.
-
-**Related:** EPIC-005
-
-### US-011 · approved · source: requirements:US-011
-
-Members add checklist items or subtasks to a task and mark them done; the task shows a completed-of-total count.
-
-Medium priority. AC-027: a new checklist item/subtask appears in an incomplete state. AC-028: marking an item complete saves that state and the task shows how many items are done out of the total. Input notes this feature is an assumed standard collaboration feature, not explicitly confirmed by the product owner.
+AC-024: posting a comment saves it and shows it with author name and timestamp to all viewers. AC-025: existing comments display in chronological order. AC-026: submitting an empty comment is blocked and prompts for text.
 
 **Related:** EPIC-005
 
-- ⚠ Feature is based on an assumption rather than explicit product-owner confirmation -- worth validating before build.
+### US-011 · draft · source: requirements:US-011
 
-### US-012 · approved · source: requirements:US-012
+A team member adds checklist items or subtasks to a task and marks them done to break work into smaller steps and track progress. Medium priority.
 
-Members apply and remove labels on tasks to categorize them, visible on both the board and list views.
-
-Medium priority. AC-029: adding one or more labels saves them and displays them on the task in both board and list views. AC-030: removing a label removes it from the task's display. Input notes this feature is an assumed standard collaboration feature, not explicitly confirmed by the product owner.
+AC-027: adding a checklist item/subtask shows it in an incomplete state. AC-028: marking an item complete saves the state and the task shows completed-count out of total.
 
 **Related:** EPIC-005
 
-- ⚠ Feature is based on an assumption rather than explicit product-owner confirmation -- worth validating before build.
+### US-012 · draft · source: requirements:US-012
 
-### NFR-SYS · approved · source: requirements:NFR-003,NFR-004,NFR-005,NFR-006,NFR-009
+A team member applies labels to tasks to categorize and visually distinguish them. Medium priority.
 
-Cross-cutting, system-wide quality requirements covering scale, notification performance/reliability, browser compatibility, and an accepted compliance risk.
+AC-029: adding one or more labels saves them and displays them on the task in both board and list views. AC-030: removing a label removes it from display.
 
-NFR-003 (scalability): sized for up to ~25 users and a few dozen active projects. NFR-004 (performance): Slack and email notifications are processed through a background queue so they never block a task save. NFR-005 (availability): Slack/email notifications are retried in the background if those services are briefly unavailable. NFR-006 (compatibility): delivered as a single responsive web app working on desktop and mobile browsers from one codebase. NFR-009 (compliance, accepted risk): no special data-residency or regulatory controls are built in, since the company operates in a single region as general-industry internal tooling.
+**Related:** EPIC-005
 
-**Related:** NFR-003, NFR-004, NFR-005, NFR-006, NFR-009
+### US-013 · draft · source: requirements:US-013
 
-- ⚠ NFR-009 is an accepted risk with no regulatory/compliance controls built in -- should be revisited if the company expands into regulated markets or regions.
+The sign-in and invite screens are restyled to a black-and-white/greyscale theme for visual consistency with the new look. Low priority.
 
-### NOTIF-GAP · draft · source: requirements:functional-summary(Notifications)
+AC-031: sign-in page backgrounds, text, buttons, and error states use only black/white/greyscale tones, replacing the previous color palette. AC-032: the invalid-credentials error remains clearly distinguishable via contrast and typography alone, not color.
 
-Functional requirements describe outbound Slack, email, and in-app notifications for task/project updates, but no user story or acceptance criteria define this behavior in detail.
+**Related:** EPIC-001, US-001, US-002
 
-The functional-requirements summary states the system 'pushes task and project updates one-way to the team's Slack channel and sends email notifications, and also provides in-app notifications,' with no two-way sync back from external systems. NFR-004 and NFR-005 govern only the queuing/retry mechanics of this behavior, not its triggers or content.
+### US-014 · draft · source: requirements:US-014
 
-**Related:** NFR-004, NFR-005
+The projects overview dashboard and project create/edit screens are restyled to the monochrome theme. Low priority.
 
-- ⚠ No user story or acceptance criteria define which events trigger notifications, what content they contain, or how in-app notifications are presented to the user -- only the background-queuing/retry behavior is specified.
+AC-033: project cards, progress indicators, and empty state use only black/white/greyscale tones. AC-034: project create/edit form fields, buttons, and validation messages use the new monochrome palette.
 
-### TECH-STACK · approved · source: requirements:technology-stack-and-services
+**Related:** EPIC-002, US-004, US-005
 
-Product owner approved an exact technology stack and service set for this lightweight-scope build; substitutions are explicitly disallowed.
+### US-015 · draft · source: requirements:US-015
 
-Backend: FastAPI 0.115 (flat access model, admin tier, one-way Slack/email webhook integrations, auto-generated API docs). Cloud: AWS (managed PostgreSQL, S3, app hosting, all in one vendor for a single internal team of 25). Database: PostgreSQL 16 (models relational projects/tasks/owners/due dates/comments/checklists/labels). Frontend: React 19 (interchangeable Kanban/list/timeline views, drag-and-drop, inline comments/checklists, one codebase for desktop+mobile). Runtime services: Amazon S3 (saas; task file attachments; env AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET); SendGrid (saas; email notifications and admin invites; env SENDGRID_API_KEY); Redis (container redis:7-alpine; outbound queue for Slack/email so saves aren't blocked; env REDIS_URL); Slack (custom incoming webhook; env SLACK_WEBHOOK_URL). Out of scope: native iOS/Android apps; two-way sync with Jira, GitHub, calendars, or external file storage.
+The task create and edit screens are restyled to the monochrome theme. Low priority.
 
-**Related:** EPIC-001, EPIC-002, EPIC-003, EPIC-004, EPIC-005
+AC-035: owner, due date, and status controls on task create/edit forms use only black/white/greyscale tones. AC-036: required-field validation messages remain clearly legible against the new monochrome background.
 
-- ⚠ Discrepancy: S3 file storage is approved as a runtime need justified by 'tasks support file attachments,' but EPIC-003's assumption explicitly defers file attachments to a later version -- clarify whether S3 is needed for this release or only provisioned ahead of a future version.
-- ⚠ No architecture-phase output exists yet to confirm how this approved stack will be realized (service boundaries, data model, deployment topology).
+**Related:** EPIC-003, US-006, US-007
+
+### US-016 · draft · source: requirements:US-016
+
+The Kanban board is restyled to the monochrome theme while remaining able to distinguish status columns/cards apart without color. Medium priority.
+
+AC-037: each column and card uses only black/white/greyscale tones. AC-038: two differently-statused columns remain distinguishable via shading, borders, or labels -- not color alone. AC-039: moving a card to a new status column visually reflects the new status in monochrome and the status change still persists as before.
+
+**Related:** EPIC-004, US-008
+
+### US-017 · draft · source: requirements:US-017
+
+A QA engineer verifies the black-and-white theme across all delivered screens on desktop and mobile widths, confirming no contrast, readability, layout, or functional regressions. Medium priority.
+
+AC-040: every delivered screen (sign-in, invite, dashboard, project, task create/edit, Kanban board) rendered in the monochrome theme at desktop and mobile widths meets readable contrast for text/interactive elements with no layout regressions. AC-041: core functional flows (sign-in, create project, create task, drag a card) all work exactly as before the theme change, confirming no functional regression.
+
+**Related:** EPIC-001, EPIC-002, EPIC-003, EPIC-004, US-013, US-014, US-015, US-016
+
+- ⚠ This is a verification/testing-oriented story defined at requirements time; actual execution and results belong to the testing phase, which has not started -- no test results exist yet to confirm AC-040/AC-041.
 <!-- sdlc:auto:end narrative -->
 
 <!-- sdlc:auto:start summary -->
-**Requirements version:** v1  
+**Requirements version:** v2  
 **Delivery scope:** lightweight  
-**Approved:** 2026-10-26
+**Approved:** 2026-10-27
 
 **Capabilities in scope:** Team member sign-in, Projects to organize work, Tasks with owners, due dates, and statuses, Kanban board view of tasks, Task list view, Task comments, Checklists / subtasks on tasks, Labels on tasks, Projects overview dashboard, Email and password sign-in (no SSO in the first version)
 
@@ -200,6 +283,17 @@ Assumption (surfaced from the confirmed understanding): authentication is email/
 | AC-007 | I am any signed-in team member | I open the projects overview | I can see every project in the workspace regardless of who created it |
 | AC-008 | I am any signed-in team member viewing a project I did not create | I edit a task or project within it | my changes are saved, because access is flat and equal with no per-project privacy or roles beyond basic admin functions |
 
+### US-013: Monochrome theme for sign-in and invite screens
+
+**Priority:** low
+
+> As a team member, I want the sign-in page to use the new black-and-white theme, so that my first experience of the app matches the new look consistently.
+
+| ID | Given | When | Then |
+|---|---|---|---|
+| AC-031 | the sign-in page is open | the page renders | all backgrounds, text, buttons and error states use only black, white and greyscale tones instead of the previous color palette |
+| AC-032 | the invalid-credentials error is shown | the page renders the error | the error is clearly distinguishable using contrast and typography alone, not color |
+
 ## EPIC-002: Projects
 
 Work is organized into projects that contain tasks. Team members create and manage projects, and a projects overview dashboard gives the team an at-a-glance view of the few dozen active projects.
@@ -230,6 +324,17 @@ The system is sized for a single small team of up to ~25 users managing a few do
 | AC-013 | I am on the projects overview dashboard | I select a project | I am taken to that project's tasks |
 | AC-014 | no projects have been created yet | I open the projects overview dashboard | I see an empty state inviting me to create the first project |
 
+### US-014: Monochrome theme for projects dashboard and project screens
+
+**Priority:** low
+
+> As a team member, I want the projects overview dashboard and project create/edit screens to use the new black-and-white theme, so that project management screens match the new visual style.
+
+| ID | Given | When | Then |
+|---|---|---|---|
+| AC-033 | the projects overview dashboard is open | the page renders | project cards, progress indicators and the empty state use only black, white and greyscale tones |
+| AC-034 | the project create or edit form is open | the form renders | form fields, buttons and validation messages use the new monochrome palette instead of the previous colors |
+
 ## EPIC-003: Tasks
 
 Each project contains tasks. A task has an owner, a due date, and a status that moves it through the workflow. Tasks are the shared unit of work the team collaborates on.
@@ -259,6 +364,17 @@ Assumption (surfaced from the confirmed understanding): at the Lightweight MVP s
 | AC-018 | an existing task | I change its status to another valid status | the new status is saved and reflected consistently across all views |
 | AC-019 | an existing task | I reassign its owner or change its due date | the change is saved and visible to all team members |
 
+### US-015: Monochrome theme for task creation and editing screens
+
+**Priority:** low
+
+> As a team member, I want the task create and edit screens to use the new black-and-white theme, so that task detail and form screens match the new visual style.
+
+| ID | Given | When | Then |
+|---|---|---|---|
+| AC-035 | a task create or edit form is open | the form renders | owner, due date and status controls use only black, white and greyscale tones instead of the previous colors |
+| AC-036 | a required field is missing on submit | the validation message is shown | the message remains clearly legible against the new monochrome background |
+
 ## EPIC-004: Task Views
 
 The same tasks can be viewed interchangeably as a Kanban board and as a task list. Changes made in one view are reflected in the other because both operate over the same underlying tasks.
@@ -286,6 +402,29 @@ Assumption (surfaced from the confirmed understanding): the timeline/Gantt view 
 |---|---|---|---|
 | AC-022 | a project with tasks | I open the task list view | I see each task in a row with its title, owner, due date, and status |
 | AC-023 | I am viewing the same project in both the list and the board | I update a task in the list view | the change is reflected on the Kanban board because both views share the same tasks |
+
+### US-016: Monochrome theme and status distinction for the Kanban board
+
+**Priority:** medium
+
+> As a team member, I want the Kanban board to use the new black-and-white theme while still letting me tell status columns and cards apart, so that I can keep managing workflow visually after the colors that previously marked status are removed.
+
+| ID | Given | When | Then |
+|---|---|---|---|
+| AC-037 | a project with tasks in various statuses | I open the Kanban board | each column and card uses only black, white and greyscale tones |
+| AC-038 | the Kanban board is rendered in the new theme | I look at two columns with different statuses | I can still distinguish them from each other using shading, borders or labels, not color alone |
+| AC-039 | I move a task card to a different status column | the move completes | the card's new status is reflected visually in the monochrome theme and the status change persists as before |
+
+### US-017: Visual regression and accessibility check for the new monochrome theme
+
+**Priority:** medium
+
+> As a QA engineer, I want to verify the black-and-white theme across all delivered screens on desktop and mobile widths, so that the restyle does not break contrast, readability or responsive layout.
+
+| ID | Given | When | Then |
+|---|---|---|---|
+| AC-040 | each delivered screen (sign-in, invite, dashboard, project, task create/edit, Kanban board) | it is rendered in the new monochrome theme at desktop and mobile widths | text and interactive elements meet readable contrast against their background and no layout regressions are introduced |
+| AC-041 | the restyled app | functional flows from the delivered stories are exercised (sign-in, create project, create task, drag a card) | all behaviours work exactly as before the theme change, confirming no functional regression |
 
 ## EPIC-005: Task Collaboration
 

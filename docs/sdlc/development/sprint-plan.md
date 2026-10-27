@@ -26,7 +26,7 @@ Capacity: 20 points · Committed: 19
 
 Deliver project and task management: project CRUD, projects overview dashboard, task creation and task updates.
 
-Capacity: 20 points · Committed: 18
+Capacity: 20 points · Committed: 20
 
 | Key | Type | Title | Points | Role | Depends on |
 |---|---|---|---|---|---|
@@ -34,6 +34,7 @@ Capacity: 20 points · Committed: 18
 | US-005 | Story | Projects overview dashboard | 5 | frontend-agent | US-004 |
 | US-006 | Story | Create a task with owner, due date, and status | 5 | backend-agent | US-004 |
 | US-007 | Story | Update task status and details | 3 | backend-agent | US-006 |
+| US-013 | Story | Monochrome theme for sign-in and invite screens | 2 | frontend-agent | — |
 
 ## Sprint 3: Sprint 3
 
@@ -48,6 +49,19 @@ Capacity: 20 points · Committed: 20
 | US-010 | Story | Comment on a task | 3 | backend-agent | US-006 |
 | US-011 | Story | Checklists and subtasks on a task | 3 | backend-agent | US-006 |
 | US-012 | Story | Labels on a task | 3 | backend-agent | US-006 |
+
+## Sprint 4: Sprint 4
+
+Change requests (CHG-001)
+
+Capacity: 20 points · Committed: 10
+
+| Key | Type | Title | Points | Role | Depends on |
+|---|---|---|---|---|---|
+| US-014 | Story | Monochrome theme for projects dashboard and project screens | 3 | frontend-agent | — |
+| US-015 | Story | Monochrome theme for task creation and editing screens | 2 | frontend-agent | — |
+| US-016 | Story | Monochrome theme and status distinction for the Kanban board | 3 | frontend-agent | — |
+| US-017 | Story | Visual regression and accessibility check for the new monochrome theme | 2 | qa-agent | — |
 
 ## Unscheduled
 
