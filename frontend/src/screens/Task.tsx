@@ -36,6 +36,19 @@ function statusLabel(key) {
   return s ? s.label : key;
 }
 
+// Shared by the initial state, the post-load/post-sync effect, and the
+// discard button, so the "what a clean form looks like for this task"
+// definition lives in exactly one place.
+function formFromTask(task) {
+  return {
+    title: task ? task.title || "" : "",
+    description: task ? task.description || "" : "",
+    owner_id: task ? task.owner_id || "" : "",
+    due_date: task ? task.due_date || "" : "",
+    status: task ? task.status || "todo" : "todo",
+  };
+}
+
 function ScreenInner() {
   const navigate = useNavigate();
   const ink = brand.primaryColor;
@@ -65,8 +78,7 @@ function ScreenInner() {
     return Array.from(options, ([id, name]) => ({ id, name }));
   }, [task, currentUser]);
 
-  const emptyForm = { title: "", description: "", owner_id: "", due_date: "", status: "todo" };
-  const [form, setForm] = React.useState(emptyForm);
+  const [form, setForm] = React.useState(() => formFromTask(null));
   const [titleError, setTitleError] = React.useState("");
   const [saveError, setSaveError] = React.useState("");
 
@@ -75,13 +87,7 @@ function ScreenInner() {
   // sync via the shared react-query cache, NFR-007).
   React.useEffect(() => {
     if (!task) return;
-    setForm({
-      title: task.title || "",
-      description: task.description || "",
-      owner_id: task.owner_id || "",
-      due_date: task.due_date || "",
-      status: task.status || "todo",
-    });
+    setForm(formFromTask(task));
   }, [task]);
 
   const dirty =
@@ -122,25 +128,27 @@ function ScreenInner() {
 
   const revert = () => {
     if (!task) return;
-    setForm({
-      title: task.title || "",
-      description: task.description || "",
-      owner_id: task.owner_id || "",
-      due_date: task.due_date || "",
-      status: task.status || "todo",
-    });
+    setForm(formFromTask(task));
     setSaveError("");
     setTitleError("");
   };
 
   const saving = updateTaskMut.isPending;
-  const fieldStyle = { border: "2px solid " + ink, borderRadius: radius, backgroundColor: bg, color: ink };
+  const fieldStyle = {
+    border: "2px solid " + ink,
+    borderRadius: radius,
+    backgroundColor: bg,
+    color: ink,
+  };
   const labelCls = "block text-[10px] font-bold uppercase tracking-[0.16em] mb-1.5";
 
   if (!taskId) {
     return (
       <div className="w-full p-10">
-        <Empty title="No task selected" description="Open a task from a project to see its detail." />
+        <Empty
+          title="No task selected"
+          description="Open a task from a project to see its detail."
+        />
       </div>
     );
   }
@@ -181,7 +189,10 @@ function ScreenInner() {
           </div>
 
           <div className="col-span-12 md:col-span-8">
-            <h1 className="text-[32px] leading-[1.1] font-bold tracking-[-0.025em]" style={{ color: ink }}>
+            <h1
+              className="text-[32px] leading-[1.1] font-bold tracking-[-0.025em]"
+              style={{ color: ink }}
+            >
               {task.title || "Untitled task"}
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] uppercase tracking-[0.14em]">
@@ -195,7 +206,11 @@ function ScreenInner() {
                 Due {fmtDate(task.due_date)}
               </span>
               <span style={{ color: neutral }}>
-                Owner {task.owner_id ? (ownerOptions.find((o) => o.id === String(task.owner_id)) || {}).name || task.owner_id : "Unassigned"}
+                Owner{" "}
+                {task.owner_id
+                  ? (ownerOptions.find((o) => o.id === String(task.owner_id)) || {}).name ||
+                    task.owner_id
+                  : "Unassigned"}
               </span>
             </div>
           </div>
@@ -206,7 +221,10 @@ function ScreenInner() {
             className="flex flex-wrap items-end justify-between gap-3 pb-2 mb-4"
             style={{ borderBottom: "2px solid " + ink }}
           >
-            <h2 className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: ink }}>
+            <h2
+              className="text-[12px] font-bold uppercase tracking-[0.18em]"
+              style={{ color: ink }}
+            >
               Task details
             </h2>
             <span aria-live="polite" className="inline-flex items-center gap-1.5 text-[11px]">
@@ -232,7 +250,11 @@ function ScreenInner() {
               style={{ border: "2px solid " + accent, borderRadius: radius, color: ink }}
               role="alert"
             >
-              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" style={{ color: accent }} aria-hidden="true" />
+              <AlertCircle
+                className="h-4 w-4 mt-0.5 shrink-0"
+                style={{ color: accent }}
+                aria-hidden="true"
+              />
               <span>{saveError}</span>
             </div>
           ) : null}
@@ -333,12 +355,20 @@ function ScreenInner() {
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3 pt-4" style={{ borderTop: "2px solid " + ink }}>
+          <div
+            className="mt-6 flex flex-wrap items-center gap-3 pt-4"
+            style={{ borderTop: "2px solid " + ink }}
+          >
             <Button
               type="submit"
               disabled={saving || !dirty}
               className="px-5 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] disabled:opacity-40"
-              style={{ backgroundColor: ink, color: bg, borderRadius: radius, border: "2px solid " + ink }}
+              style={{
+                backgroundColor: ink,
+                color: bg,
+                borderRadius: radius,
+                border: "2px solid " + ink,
+              }}
             >
               {saving ? "Saving…" : "Save changes"}
             </Button>
@@ -347,7 +377,12 @@ function ScreenInner() {
               onClick={revert}
               disabled={!dirty || saving}
               className="px-4 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] disabled:opacity-40"
-              style={{ backgroundColor: bg, color: ink, border: "2px solid " + ink, borderRadius: radius }}
+              style={{
+                backgroundColor: bg,
+                color: ink,
+                border: "2px solid " + ink,
+                borderRadius: radius,
+              }}
             >
               Discard edits
             </Button>

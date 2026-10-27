@@ -9,8 +9,6 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
-TASK_STATUSES = ("todo", "in_progress", "done")
-
 
 class StubResponse(BaseModel):
     """What a generated route returns until someone implements it.
