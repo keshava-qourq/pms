@@ -2,7 +2,7 @@
 # ADR-0004: Use AWS for Cloud
 
 Status: Accepted  
-Date: 2026-10-26
+Date: 2026-10-27
 
 ## Context and Problem Statement
 
@@ -20,5 +20,5 @@ Chosen option: AWS, because AWS provides managed RDS PostgreSQL, S3 for attachme
 
 ## Consequences
 
-Single-region only per NFR-009; no multi-region residency controls are built.
+Single-region only; no multi-region residency controls are built.
 <!-- sdlc:auto:end adr -->

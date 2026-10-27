@@ -5,7 +5,7 @@
 <!-- sdlc:auto:start overview -->
 project management system
 
-**Documentation version:** v6
+**Documentation version:** v7
 <!-- sdlc:auto:end overview -->
 
 ## Contents
@@ -14,7 +14,7 @@ project management system
 | Document | State |
 |---|---|
 | [Requirements](requirements/README.md) | v2 approved |
-| [Architecture](architecture/README.md) | 13 entries |
+| [Architecture](architecture/README.md) | 7 entries |
 | [Development](development/README.md) | 7 entries |
 | [Testing](testing/README.md) | 1 entry |
 | [Deployment](deployment/README.md) | 1 entry |
@@ -31,7 +31,7 @@ project management system
 | [Runbook](deployment/runbook.md) | not deployed yet |
 | [Release notes](deployment/release-notes.md) | 0 releases |
 | [Traceability matrix](traceability-matrix.md) | 17 requirements |
-| [Changelog](CHANGELOG.md) | 6 versions |
+| [Changelog](CHANGELOG.md) | 7 versions |
 <!-- sdlc:auto:end contents -->
 
 ## Open gaps
@@ -53,10 +53,12 @@ project management system
 
 ### Architecture
 
-- Requirements phase descriptions for US-001 through US-012 were not included in this input, so this architecture's entries could not be confidently linked to specific requirement IDs.
-- No approval date was provided for this architecture version.
-- No endpoint for uploading/retrieving task attachments is listed, and no detail on attachment access control, size limits, or lifecycle was provided — attachment flow appears provisioned at the infrastructure level but not yet specified at the API level.
-- No endpoints for deleting projects, deleting tasks, deleting comments, removing checklist items, or marking in-app notifications as read were specified.
+- The input is for Revision 2 only; Revision 1 content is not included here, so earlier rationale/approvals for the pre-restyle architecture are not available to cross-check.
+- No specific visual-regression/E2E test library has been named — it is only 'recommended', so tooling choice for US-017 is still open.
+- S3 object store is provisioned for task file attachments, but no attachment entity appears in the data model and no attachment upload/download endpoint is listed — traceability between this component and a concrete requirement/entity/endpoint is incomplete.
+- Critical paths 2 (create task and notify) and the base sign-in mechanics are not explicitly tied to a requirement id in this input, so related_ids could not be completed beyond the monochrome-specific US-013/US-016 callouts.
+- No entity for file attachments despite S3 being provisioned specifically for task file attachments — this mismatch should be confirmed/resolved.
+- No endpoint for uploading/retrieving task file attachments, despite the S3 object_store component existing for that purpose.
 
 ### Development
 

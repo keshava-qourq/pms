@@ -2,7 +2,7 @@
 # ADR-0002: Use FastAPI 0.115 for Backend
 
 Status: Accepted  
-Date: 2026-10-26
+Date: 2026-10-27
 
 ## Context and Problem Statement
 
@@ -20,5 +20,5 @@ Chosen option: FastAPI 0.115, because FastAPI 0.115 cleanly serves the project/t
 
 ## Consequences
 
-Async background work is pushed to a separate Celery worker rather than handled inline, which is the intended design for non-blocking notifications (NFR-004).
+Async background work is pushed to a separate Celery worker rather than handled inline, which is the intended design for non-blocking notifications.
 <!-- sdlc:auto:end adr -->
