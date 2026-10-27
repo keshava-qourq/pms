@@ -25,10 +25,9 @@ from app.security import hash_password
 tasks_module = pytest.importorskip("app.tasks")
 notify_task_saved = getattr(tasks_module, "notify_task_saved", None)
 
-pytestmark = pytest.mark.skipif(
-    notify_task_saved is None,
-    reason="app.tasks.notify_task_saved is not implemented yet (US-006 not built in this workspace)",
-)
+_SKIP_REASON = "app.tasks.notify_task_saved is not implemented yet (US-006 not built here)"
+
+pytestmark = pytest.mark.skipif(notify_task_saved is None, reason=_SKIP_REASON)
 
 
 def _make_task(db_session: Session) -> Task:
@@ -70,7 +69,9 @@ def test_nfr004_saving_a_task_enqueues_the_job_rather_than_calling_outbound_serv
     inline_slack_calls = []
     inline_email_calls = []
     monkeypatch.setattr(
-        "app.tasks._send_via_slack", lambda *a, **k: inline_slack_calls.append((a, k)), raising=False
+        "app.tasks._send_via_slack",
+        lambda *a, **k: inline_slack_calls.append((a, k)),
+        raising=False,
     )
     monkeypatch.setattr(
         "app.tasks._send_via_sendgrid_task_notification",

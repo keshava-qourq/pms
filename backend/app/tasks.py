@@ -187,13 +187,13 @@ def notify_task_created(self, task_id: str) -> None:
             _send_via_slack(f"New task created: {task.title}")
             _mark_notified(slack_key)
 
-        if task.assignee_id:
-            assignee = db.get(User, task.assignee_id)
-            if assignee is not None:
+        if task.owner_id:
+            owner = db.get(User, task.owner_id)
+            if owner is not None:
                 email_key = f"notif:task-created:email:{task_id}"
                 if not _already_notified(email_key):
                     _send_task_email(
-                        assignee.email,
+                        owner.email,
                         subject=f"New task assigned: {task.title}",
                         body=f"You've been assigned a new task: {task.title}",
                     )
@@ -226,13 +226,13 @@ def notify_task_updated(self, task_id: str, changed_fields: list[str]) -> None:
             _send_via_slack(f"Task updated: {task.title} ({fields_text})")
             _mark_notified(slack_key)
 
-        if task.assignee_id:
-            assignee = db.get(User, task.assignee_id)
-            if assignee is not None:
+        if task.owner_id:
+            owner = db.get(User, task.owner_id)
+            if owner is not None:
                 email_key = f"notif:task-updated:email:{task_id}:{event}"
                 if not _already_notified(email_key):
                     _send_task_email(
-                        assignee.email,
+                        owner.email,
                         subject=f"Task updated: {task.title}",
                         body=f"Your task '{task.title}' was updated ({fields_text}).",
                     )

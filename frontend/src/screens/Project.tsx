@@ -185,6 +185,7 @@ function ScreenInner() {
       document.removeEventListener("keydown", onKey);
       clearTimeout(f);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- closeModal is declared below and stable for the component's lifetime; depending on it would reorder the useEffect before its declaration (TDZ).
   }, [modal]);
 
   const closeModal = () => {

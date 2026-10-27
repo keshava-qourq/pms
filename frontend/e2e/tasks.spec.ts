@@ -8,16 +8,6 @@ import { expect, test } from "@playwright/test";
 const MEMBER_EMAIL = process.env.SEED_USER_EMAIL ?? "demo@example.com";
 const MEMBER_PASSWORD = process.env.SEED_USER_PASSWORD ?? "password123";
 
-function runPython(script: string): string {
-  return execSync("python -", {
-    cwd: "../backend",
-    env: process.env,
-    input: script,
-  })
-    .toString()
-    .trim();
-}
-
 test.beforeAll(() => {
   execSync("python -m app.seed", { cwd: "../backend", env: process.env, stdio: "pipe" });
 });
@@ -87,7 +77,9 @@ test("[AC-018][NFR-007] changing a task's status is reflected in both the board 
   await expect(page.getByText(taskTitle)).toBeVisible({ timeout: 10_000 });
 
   // Move the card forward from the board view using its move control.
-  const moveForward = page.getByRole("button", { name: new RegExp(`Move .*${taskTitle}.* to`, "i") }).first();
+  const moveForward = page
+    .getByRole("button", { name: new RegExp(`Move .*${taskTitle}.* to`, "i") })
+    .first();
   if (await moveForward.count()) {
     await moveForward.click();
   } else {
