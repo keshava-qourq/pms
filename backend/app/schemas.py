@@ -86,12 +86,26 @@ class ProjectCreate(BaseModel):
     name: str
     description: str | None = None
 
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_blank(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("name must not be blank")
+        return value
+
 
 class ProjectUpdate(BaseModel):
     """{name?, description?} as PATCH /projects/{id} expects."""
 
     name: str | None = None
     description: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_blank(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("name must not be blank")
+        return value
 
 
 class ProjectOut(BaseModel):
