@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.main import app
-from app.models import Project, User
+from app.models import User
 from app.security import create_access_token, hash_password
 
 client = TestClient(app)
@@ -144,9 +144,7 @@ def test_ac011_blank_name_patch_returns_422_and_leaves_record_unchanged(
     create = client.post("/projects", json={"name": original_name}, headers=_auth(member))
     project = create.json()
 
-    patch = client.patch(
-        f"/projects/{project['id']}", json={"name": "   "}, headers=_auth(member)
-    )
+    patch = client.patch(f"/projects/{project['id']}", json={"name": "   "}, headers=_auth(member))
     assert patch.status_code == 422, patch.text
 
     reread = client.get(f"/projects/{project['id']}", headers=_auth(member)).json()
