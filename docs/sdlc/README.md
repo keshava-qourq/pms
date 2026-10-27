@@ -5,7 +5,7 @@
 <!-- sdlc:auto:start overview -->
 project management system
 
-**Documentation version:** v7
+**Documentation version:** v8
 <!-- sdlc:auto:end overview -->
 
 ## Contents
@@ -15,7 +15,7 @@ project management system
 |---|---|
 | [Requirements](requirements/README.md) | v2 approved |
 | [Architecture](architecture/README.md) | 7 entries |
-| [Development](development/README.md) | 7 entries |
+| [Development](development/README.md) | 10 entries |
 | [Testing](testing/README.md) | 1 entry |
 | [Deployment](deployment/README.md) | 1 entry |
 | [Maintenance](maintenance/README.md) | 1 entry |
@@ -31,7 +31,7 @@ project management system
 | [Runbook](deployment/runbook.md) | not deployed yet |
 | [Release notes](deployment/release-notes.md) | 0 releases |
 | [Traceability matrix](traceability-matrix.md) | 17 requirements |
-| [Changelog](CHANGELOG.md) | 7 versions |
+| [Changelog](CHANGELOG.md) | 8 versions |
 <!-- sdlc:auto:end contents -->
 
 ## Open gaps
@@ -62,10 +62,11 @@ project management system
 
 ### Development
 
-- Same commit hash is shared with US-004; confirm whether both stories were genuinely delivered in a single combined commit or if this is a reporting duplication.
-- Same commit hash is shared with US-006; confirm whether both stories were delivered together or if this is a reporting duplication.
-- No delivery status, commit, or progress is recorded for US-001, US-002, or US-003 despite the development run being marked 'completed' -- status of this work is unknown and should be confirmed with the development agent/run log.
-- No delivery status, commit, or progress is recorded for US-008, US-009, US-010, US-011, or US-012 despite the development run being marked 'completed' -- status of this work is unknown and should be confirmed with the development agent/run log.
+- Conflict: run status is 'completed' yet only 4 of 17 planned stories have ticket records -- unclear whether 'completed' refers to the whole plan or only to a partial run/sprint; needs confirmation from the source system.
+- No ticket/commit data for US-001 (sign in), US-002 (admin invite), US-003 (equal access), or US-013 (monochrome theme for sign-in/invite) despite the run being reported as completed and these being first in sequence.
+- No ticket/commit data for US-014 despite other Sprint 2 items being marked delivered.
+- No ticket/commit data for US-008 and its subtasks, US-009, US-010, US-011, or US-012.
+- No ticket/commit data for US-015, US-016, or US-017; the monochrome theme rollout and its QA verification cannot be confirmed as started or completed.
 
 ### Testing
 

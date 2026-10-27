@@ -3,67 +3,93 @@
 > Maintained by QuorQ AI SDLC. Text between `sdlc:auto` markers is regenerated; anything outside them is yours and is kept.
 
 <!-- sdlc:auto:start narrative -->
-### DEV-PLAN-V1 · approved · source: plan:v1
+### DEV-PLAN-v1 · approved · source: plan
 
-Approved development plan (version 1) organizes the 12 planned stories under 5 epics across 3 sprints, each with capacity 20.
+Approved development plan, version 1, organized into 4 sprints of 20-point capacity each, covering authentication/admin invites, project management, task management and views, collaboration features, and a monochrome theme rollout.
 
-Sprint 1 goal: stand up authentication (sign-in, admin invites, flat equal-access) - covers EPIC-001 (US-001, US-002, US-003) with sub-tasks US-001-T1..T3 and US-002-T1..T4 assigned to backend-agent, frontend-agent, and integration-agent. Sprint 2 goal: deliver project and task management (project CRUD, overview dashboard, task creation/updates) - covers EPIC-002 (US-004, US-005) and part of EPIC-003 (US-006, US-007). Sprint 3 goal: deliver task views and collaboration (Kanban, list view, comments, checklists, labels) - covers EPIC-004 (US-008, US-009) and EPIC-005 (US-010, US-011, US-012). Plan status is approved at version 1.
+Sprint 1 goal: deliver core authentication and admin invite flow with flat, equal access controls (items: EPIC-001, US-001 sign-in, US-002 admin invite, US-003 equal access, US-013 monochrome theme for sign-in/invite). Sprint 2 goal: deliver project management, project dashboard, task creation and status workflow, and start the monochrome restyle (items: EPIC-002, US-004 create/manage project, US-005 projects overview dashboard, US-014 monochrome theme for projects dashboard/project screens, EPIC-003, US-006 create task, US-007 update task status/details). Sprint 3 goal: deliver Kanban board and task list views plus task collaboration -- comments, checklists, labels (items: EPIC-004, US-008 Kanban board view with subtasks US-008-T1 columns-by-status, US-008-T2 drag-and-drop status update, US-008-T3 sync board with other views; US-009 task list view; EPIC-005, US-010 comments, US-011 checklists/subtasks, US-012 labels). Sprint 4 goal: complete monochrome theme rollout and verify with visual regression and accessibility QA (items: US-015 monochrome theme for task creation/editing, US-016 monochrome theme and status distinction for Kanban board, US-017 visual regression and accessibility check).
 
-**Related:** US-001, US-002, US-003, US-004, US-005, US-006, US-007, US-008, US-009, US-010, US-011, US-012
+**Related:** US-001, US-002, US-003, US-013, US-004, US-005, US-014, US-006, US-007, US-015, US-008, US-009, US-016, US-017, US-010, US-011, US-012
 
-### DEV-US-004 · approved · source: dev:US-004
+### US-004 · approved · source: dev:US-004
 
-Project CRUD story delivered in the development run.
+Ticket for 'Create and manage a project' delivered.
 
-Ticket US-004 'Create and manage a project' is recorded as delivered, commit cbdff9bcc56f70ad08661734c90dc4e44e97f3ed. Assigned role per plan: backend-agent, 5 points, part of EPIC-002 Projects.
+Status=delivered, commit cbdff9bcc56f70ad08661734c90dc4e44e97f3ed. Implements Sprint 2 scope item US-004. Same commit hash is shared with ticket US-005, suggesting the two were delivered together.
 
 **Related:** US-004
 
-### DEV-US-005 · approved · source: dev:US-005
+### US-005 · approved · source: dev:US-005
 
-Projects overview dashboard story delivered in the development run.
+Ticket for 'Projects overview dashboard' delivered.
 
-Ticket US-005 'Projects overview dashboard' is recorded as delivered, commit cbdff9bcc56f70ad08661734c90dc4e44e97f3ed (same commit as US-004). Assigned role per plan: frontend-agent, 5 points, part of EPIC-002 Projects.
+Status=delivered, commit cbdff9bcc56f70ad08661734c90dc4e44e97f3ed. Implements Sprint 2 scope item US-005. Same commit hash is shared with ticket US-004, suggesting the two were delivered together.
 
-**Related:** US-005
+**Related:** US-005, US-004
 
-- ⚠ Same commit hash is shared with US-004; confirm whether both stories were genuinely delivered in a single combined commit or if this is a reporting duplication.
+### US-006 · approved · source: dev:US-006
 
-### DEV-US-006 · approved · source: dev:US-006
+Ticket for 'Create a task with owner, due date, and status' delivered.
 
-Task creation story (owner, due date, status) delivered in the development run.
-
-Ticket US-006 'Create a task with owner, due date, and status' is recorded as delivered, commit 8ddb1f54e748649fa08e91f83933136e80cda7d6. Assigned role per plan: backend-agent, 5 points, part of EPIC-003 Tasks.
+Status=delivered, commit 8ddb1f54e748649fa08e91f83933136e80cda7d6. Implements Sprint 2 scope item US-006. Same commit hash is shared with ticket US-007, suggesting the two were delivered together.
 
 **Related:** US-006
 
-### DEV-US-007 · approved · source: dev:US-007
+### US-007 · approved · source: dev:US-007
 
-Task status/detail update story delivered in the development run.
+Ticket for 'Update task status and details' delivered.
 
-Ticket US-007 'Update task status and details' is recorded as delivered, commit 8ddb1f54e748649fa08e91f83933136e80cda7d6 (same commit as US-006). Assigned role per plan: backend-agent, 3 points, part of EPIC-003 Tasks.
+Status=delivered, commit 8ddb1f54e748649fa08e91f83933136e80cda7d6. Implements Sprint 2 scope item US-007. Same commit hash is shared with ticket US-006, suggesting the two were delivered together.
 
-**Related:** US-007
+**Related:** US-007, US-006
 
-- ⚠ Same commit hash is shared with US-006; confirm whether both stories were delivered together or if this is a reporting duplication.
+### DEV-RUN-STATUS · draft · source: dev:run
 
-### DEV-GAP-SPRINT1-AUTH · draft
+Development run is reported as 'completed', but only 4 tickets (US-004, US-005, US-006, US-007) were included in that run's output.
 
-Sprint 1 authentication epic (sign-in, admin invites, equal access) has no corresponding development tickets in this run.
+The run-level status field says 'completed' with no further tickets listed beyond US-004 through US-007. All 4 reported tickets belong to Sprint 2 scope per the plan. No data was provided for Sprint 1, the rest of Sprint 2, Sprint 3, or Sprint 4 items.
 
-The plan defines EPIC-001 with stories US-001 (sign in with email/password, 8 pts), US-002 (admin invites team members, 8 pts), and US-003 (equal access to all projects/tasks, 3 pts), plus associated tasks (US-001-T1..T3, US-002-T1..T4) assigned across backend-agent, frontend-agent, and integration-agent. No ticket entries for US-001, US-002, or US-003 appear in the development run output.
+**Related:** US-004, US-005, US-006, US-007
 
-**Related:** US-001, US-002, US-003, EPIC-001
+- ⚠ Conflict: run status is 'completed' yet only 4 of 17 planned stories have ticket records -- unclear whether 'completed' refers to the whole plan or only to a partial run/sprint; needs confirmation from the source system.
 
-- ⚠ No delivery status, commit, or progress is recorded for US-001, US-002, or US-003 despite the development run being marked 'completed' -- status of this work is unknown and should be confirmed with the development agent/run log.
+### DEV-GAP-SPRINT1 · draft
 
-### DEV-GAP-SPRINT3-TASKVIEWS · draft
+No development tickets were reported for Sprint 1 scope (sign-in, admin invite, equal access, monochrome theme for sign-in/invite screens).
 
-Sprint 3 task-views and collaboration epics (Kanban, list view, comments, checklists, labels) have no corresponding development tickets in this run.
+The plan defines Sprint 1 with goal 'Deliver core authentication and admin invite flow with flat, equal access controls' covering US-001, US-002, US-003, and US-013. The development run input contains no ticket entries for any of these items.
 
-The plan defines EPIC-004 (US-008 Kanban board view, 8 pts; US-009 task list view, 3 pts) and EPIC-005 (US-010 comment on a task, 3 pts; US-011 checklists/subtasks, 3 pts; US-012 labels, 3 pts), all assigned to frontend-agent or backend-agent. No ticket entries for US-008 through US-012 appear in the development run output.
+**Related:** US-001, US-002, US-003, US-013
 
-**Related:** US-008, US-009, US-010, US-011, US-012, EPIC-004, EPIC-005
+- ⚠ No ticket/commit data for US-001 (sign in), US-002 (admin invite), US-003 (equal access), or US-013 (monochrome theme for sign-in/invite) despite the run being reported as completed and these being first in sequence.
 
-- ⚠ No delivery status, commit, or progress is recorded for US-008, US-009, US-010, US-011, or US-012 despite the development run being marked 'completed' -- status of this work is unknown and should be confirmed with the development agent/run log.
+### DEV-GAP-US-014 · draft
+
+No development ticket reported for the monochrome theme styling of the projects dashboard and project screens, though sibling Sprint 2 items were delivered.
+
+US-014 is part of Sprint 2 scope ('...start the monochrome restyle') alongside US-004, US-005, US-006, and US-007, all of which show as delivered. US-014 has no corresponding ticket entry in the development run input.
+
+**Related:** US-014
+
+- ⚠ No ticket/commit data for US-014 despite other Sprint 2 items being marked delivered.
+
+### DEV-GAP-SPRINT3 · draft
+
+No development tickets were reported for Sprint 3 scope (Kanban board, task list view, comments, checklists/subtasks, labels).
+
+The plan defines Sprint 3 with goal 'Deliver the Kanban board and task list views plus task collaboration: comments, checklists and labels', covering US-008 (with subtasks US-008-T1, US-008-T2, US-008-T3), US-009, US-010, US-011, and US-012. None of these appear in the development run input.
+
+**Related:** US-008, US-008-T1, US-008-T2, US-008-T3, US-009, US-010, US-011, US-012
+
+- ⚠ No ticket/commit data for US-008 and its subtasks, US-009, US-010, US-011, or US-012.
+
+### DEV-GAP-SPRINT4 · draft
+
+No development tickets were reported for Sprint 4 scope (completion of monochrome theme rollout plus visual regression/accessibility QA).
+
+The plan defines Sprint 4 with goal 'Complete the monochrome theme rollout across remaining screens and verify with visual regression and accessibility QA', covering US-015, US-016, and US-017. None of these appear in the development run input.
+
+**Related:** US-015, US-016, US-017
+
+- ⚠ No ticket/commit data for US-015, US-016, or US-017; the monochrome theme rollout and its QA verification cannot be confirmed as started or completed.
 <!-- sdlc:auto:end narrative -->
