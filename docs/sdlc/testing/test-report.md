@@ -15,6 +15,16 @@ _No unit-test run yet._
 
 | Step | Status | Ticket | Finished |
 |---|---|---|---|
+| run_checks | succeeded | — | 2026-10-29 |
+
+### Sprint 2
+
+_No test steps recorded._
+
+### Sprint 2
+
+| Step | Status | Ticket | Finished |
+|---|---|---|---|
 | run_checks | succeeded | — | 2026-10-27 |
 
 ### Sprint 1

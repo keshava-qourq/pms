@@ -3,9 +3,9 @@
 > Maintained by QuorQ AI SDLC. Text between `sdlc:auto` markers is regenerated; anything outside them is yours and is kept.
 
 <!-- sdlc:auto:start summary -->
-109 tests · Passed 90 · Failed 0 · Skipped 3 · Not run 16
+110 tests · Passed 90 · Failed 0 · Skipped 3 · Not run 17
 
-Acceptance criteria covered: 18/41 · passing: 4/41
+Acceptance criteria covered: 19/41 · passing: 4/41
 <!-- sdlc:auto:end summary -->
 
 <!-- sdlc:auto:start tests -->
@@ -106,6 +106,12 @@ Acceptance criteria covered: 18/41 · passing: 4/41
 | — | [NFR-006] the projects overview renders usably at a 375px mobile viewport | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
 
 ## Sprint 2
+
+### US-013: Monochrome theme for sign-in and invite screens
+
+| Criteria | Test | Level | Result | File |
+|---|---|---|---|---|
+| AC-032 | [AC-032] the invalid-credentials error is distinguishable from the idle state without colour, and stays achromatic | E2E | Not run yet | `frontend/e2e/monochrome.spec.ts` |
 
 ### US-004: Create and manage a project
 
