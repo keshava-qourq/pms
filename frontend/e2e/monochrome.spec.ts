@@ -5,7 +5,6 @@ import { expect, test, type Page } from "@playwright/test";
 // Same seeded demo member every other e2e file in this suite relies on
 // (app.seed.seed_demo_user) -- a known-password account for the sign-in flow.
 const SEED_EMAIL = process.env.SEED_USER_EMAIL ?? "demo@example.com";
-const SEED_PASSWORD = process.env.SEED_USER_PASSWORD ?? "password123";
 
 const VIEWPORTS = [
   { name: "desktop", width: 1280, height: 800 },
@@ -174,9 +173,7 @@ test("[AC-032] the invalid-credentials error is distinguishable from the idle st
   // (background inversion), not a colour change -- both fills are achromatic.
   expect(errorStyle.backgroundColor).not.toBe(idleStyle.backgroundColor);
   const idleIsFilled = /rgba?\(([^)]+)\)/.exec(idleStyle.backgroundColor);
-  const idleAlpha = idleIsFilled
-    ? parseFloat(idleIsFilled[1].split(",")[3] ?? "1")
-    : 0;
+  const idleAlpha = idleIsFilled ? parseFloat(idleIsFilled[1].split(",")[3] ?? "1") : 0;
   expect(idleAlpha === 0 || idleStyle.backgroundColor === "transparent").toBe(true);
 
   // The error region's own colours remain achromatic even though it is now filled.
