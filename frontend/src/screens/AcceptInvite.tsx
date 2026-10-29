@@ -33,6 +33,10 @@ function scorePassword(value) {
   return Math.max(0, Math.min(score, 4));
 }
 
+function fieldBorder(hasError, ink) {
+  return (hasError ? "3px" : "2px") + " solid " + ink;
+}
+
 // Module-level: defined once, not recreated on every Screen render, so the inputs it
 // wraps keep their identity (and focus/selection) across keystrokes instead of being
 // unmounted and remounted each time the form state changes.
@@ -99,7 +103,7 @@ const SHEET_CSS = `
 }
 .pms-input::placeholder { color: var(--muted); }
 .pms-input[aria-invalid="true"] { border-width: 3px; }
-.pms-input:disabled, .pms-input[readonly] { background: var(--wash); color: var(--muted); }
+.pms-input:disabled { background: var(--wash); color: var(--muted); }
 .pms-input:focus-visible,
 .pms-btn:focus-visible,
 .pms-link:focus-visible {
@@ -354,9 +358,7 @@ export default function Screen() {
                   >
                     <AlertCircle className="h-4 w-4 mt-[2px] shrink-0" aria-hidden="true" />
                     <p className="text-[13px] leading-[1.5]">
-                      <span className="font-bold uppercase tracking-[0.06em]">
-                        Not submitted.{" "}
-                      </span>
+                      <span className="font-bold uppercase tracking-[0.06em]">Not submitted. </span>
                       {formError} Nothing you typed was lost.
                     </p>
                   </div>
@@ -408,7 +410,7 @@ export default function Screen() {
                       onChange={(e) => setField("full_name", e.target.value)}
                       className="pms-input sm:max-w-[360px]"
                       style={{
-                        border: (errors.full_name ? "3px" : "2px") + " solid " + ink,
+                        border: fieldBorder(errors.full_name, ink),
                         borderRadius: brand.radius,
                       }}
                       aria-invalid={errors.full_name ? "true" : "false"}
@@ -443,7 +445,7 @@ export default function Screen() {
                         onChange={(e) => setField("password", e.target.value)}
                         className="pms-input sm:max-w-[360px]"
                         style={{
-                          border: (errors.password ? "3px" : "2px") + " solid " + ink,
+                          border: fieldBorder(errors.password, ink),
                           borderRadius: brand.radius,
                         }}
                         aria-invalid={errors.password ? "true" : "false"}
@@ -514,7 +516,7 @@ export default function Screen() {
                         onChange={(e) => setField("confirm", e.target.value)}
                         className="pms-input sm:max-w-[360px]"
                         style={{
-                          border: (errors.confirm ? "3px" : "2px") + " solid " + ink,
+                          border: fieldBorder(errors.confirm, ink),
                           borderRadius: brand.radius,
                         }}
                         aria-invalid={errors.confirm ? "true" : "false"}

@@ -12,6 +12,10 @@ const { Check, AlertCircle, CheckCircle } = Icons;
 const PRODUCT = "PMS";
 const mix = (colour, percent) => `color-mix(in srgb, ${colour} ${percent}%, transparent)`;
 
+function fieldBorder(hasError) {
+  return `${hasError ? 3 : 2}px solid ${brand.primaryColor}`;
+}
+
 // The sign-in and accept-invite screens are strictly black / white / greyscale:
 // no hue-bearing colour (the former `brand.accentColor` blue) is used anywhere
 // on these two screens. Every "emphasis" that used to be carried by colour is
@@ -42,7 +46,6 @@ export default function Screen() {
     borderRadius: brand.radius,
     height: 44,
     "--tw-ring-color": brand.primaryColor,
-    "--tw-ring-offset-width": "2px",
   };
 
   const busy = status === "checking";
@@ -161,7 +164,7 @@ export default function Screen() {
                 className="w-full bg-white px-3 text-sm outline-none transition-colors focus:ring-2 disabled:opacity-60"
                 style={{
                   ...field,
-                  border: `${fieldError.email ? 3 : 2}px solid ${brand.primaryColor}`,
+                  border: fieldBorder(fieldError.email),
                 }}
               />
               {fieldError.email ? (
@@ -200,7 +203,7 @@ export default function Screen() {
                 className="w-full bg-white px-3 text-sm outline-none transition-colors focus:ring-2 disabled:opacity-60"
                 style={{
                   ...field,
-                  border: `${fieldError.password ? 3 : 2}px solid ${brand.primaryColor}`,
+                  border: fieldBorder(fieldError.password),
                 }}
               />
               {fieldError.password ? (
@@ -311,8 +314,7 @@ export default function Screen() {
                   className="w-3"
                   style={{
                     height: h,
-                    backgroundColor:
-                      i === 4 ? brand.primaryColor : mix(brand.primaryColor, 16),
+                    backgroundColor: i === 4 ? brand.primaryColor : mix(brand.primaryColor, 16),
                   }}
                 />
               ))}
