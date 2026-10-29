@@ -12,6 +12,10 @@ const { Check, AlertCircle, CheckCircle } = Icons;
 const PRODUCT = "PMS";
 const mix = (colour, percent) => `color-mix(in srgb, ${colour} ${percent}%, transparent)`;
 
+// The sign-in and accept-invite screens are strictly black / white / greyscale:
+// no hue-bearing colour (the former `brand.accentColor` blue) is used anywhere
+// on these two screens. Every "emphasis" that used to be carried by colour is
+// now carried by contrast (solid fills) and typography (weight, case, rules).
 export default function Screen() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,7 +41,7 @@ export default function Screen() {
     border: rule,
     borderRadius: brand.radius,
     height: 44,
-    "--tw-ring-color": brand.accentColor,
+    "--tw-ring-color": brand.primaryColor,
     "--tw-ring-offset-width": "2px",
   };
 
@@ -155,13 +159,16 @@ export default function Screen() {
                   if (status === "error") setStatus("idle");
                 }}
                 className="w-full bg-white px-3 text-sm outline-none transition-colors focus:ring-2 disabled:opacity-60"
-                style={field}
+                style={{
+                  ...field,
+                  border: `${fieldError.email ? 3 : 2}px solid ${brand.primaryColor}`,
+                }}
               />
               {fieldError.email ? (
                 <p
                   id="pms-email-error"
-                  className="pms-rise text-xs font-semibold"
-                  style={{ color: brand.accentColor }}
+                  className="pms-rise text-xs font-bold uppercase tracking-wide"
+                  style={{ color: brand.primaryColor }}
                 >
                   {fieldError.email}
                 </p>
@@ -191,13 +198,16 @@ export default function Screen() {
                   if (status === "error") setStatus("idle");
                 }}
                 className="w-full bg-white px-3 text-sm outline-none transition-colors focus:ring-2 disabled:opacity-60"
-                style={field}
+                style={{
+                  ...field,
+                  border: `${fieldError.password ? 3 : 2}px solid ${brand.primaryColor}`,
+                }}
               />
               {fieldError.password ? (
                 <p
                   id="pms-password-error"
-                  className="pms-rise text-xs font-semibold"
-                  style={{ color: brand.accentColor }}
+                  className="pms-rise text-xs font-bold uppercase tracking-wide"
+                  style={{ color: brand.primaryColor }}
                 >
                   {fieldError.password}
                 </p>
@@ -213,7 +223,7 @@ export default function Screen() {
               style={{
                 backgroundColor: brand.primaryColor,
                 borderRadius: brand.radius,
-                "--tw-ring-color": brand.accentColor,
+                "--tw-ring-color": brand.primaryColor,
               }}
             >
               {busy ? (
@@ -221,7 +231,7 @@ export default function Screen() {
                   <span
                     aria-hidden
                     className="pms-tick h-2 w-2"
-                    style={{ backgroundColor: brand.accentColor }}
+                    style={{ backgroundColor: "#ffffff" }}
                   />
                   Checking credentials
                 </React.Fragment>
@@ -239,20 +249,23 @@ export default function Screen() {
           <div data-wf="b-4-0" aria-live="polite" className="mt-5 min-h-[56px]">
             {status === "error" ? (
               <p
-                className="pms-rise flex items-start gap-3 px-4 py-3 text-sm font-semibold"
+                role="alert"
+                className="pms-rise flex items-start gap-3 px-4 py-3 text-sm font-bold"
                 style={{
-                  border: `2px solid ${brand.accentColor}`,
+                  backgroundColor: brand.primaryColor,
+                  color: "#ffffff",
                   borderRadius: brand.radius,
-                  color: brand.accentColor,
                 }}
               >
                 <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
+                  <span className="mr-1.5 uppercase tracking-[0.14em]">Sign-in failed.</span>
                   Those credentials are invalid. Check your email and password and try again.
                 </span>
               </p>
             ) : status === "success" ? (
               <p
+                role="status"
                 className="pms-rise flex items-start gap-3 px-4 py-3 text-sm font-semibold"
                 style={{ border: rule, borderRadius: brand.radius }}
               >
@@ -286,7 +299,7 @@ export default function Screen() {
               {PRODUCT}
             </p>
             <div className="mt-6 flex items-center gap-3 pt-4" style={{ borderTop: rule }}>
-              <span className="h-3 w-3" style={{ backgroundColor: brand.accentColor }} />
+              <span className="h-3 w-3" style={{ backgroundColor: brand.primaryColor }} />
               <span className="text-[11px] font-bold uppercase tracking-[0.18em]">
                 Meridian Works internal tooling
               </span>
@@ -298,7 +311,8 @@ export default function Screen() {
                   className="w-3"
                   style={{
                     height: h,
-                    backgroundColor: i === 4 ? brand.accentColor : mix(brand.primaryColor, 16),
+                    backgroundColor:
+                      i === 4 ? brand.primaryColor : mix(brand.primaryColor, 16),
                   }}
                 />
               ))}

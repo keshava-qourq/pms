@@ -65,13 +65,15 @@ function FieldRow({ num, label, htmlFor, hint, ink, muted, children }) {
   );
 }
 
-function ErrorNote({ id, accent, children }) {
+// Field-level errors are distinguished from hints by weight, case and an icon --
+// not by colour: the whole screen is black / white / greyscale (see Screen below).
+function ErrorNote({ id, ink, children }) {
   return (
     <p
       id={id}
       role="alert"
-      className="mt-2 flex items-start gap-1.5 text-[12.5px] font-medium leading-[1.5]"
-      style={{ color: accent }}
+      className="mt-2 flex items-start gap-1.5 text-[12.5px] font-bold leading-[1.5]"
+      style={{ color: ink }}
     >
       <AlertCircle className="h-4 w-4 shrink-0 mt-[1px]" aria-hidden="true" />
       <span>
@@ -96,17 +98,17 @@ const SHEET_CSS = `
   letter-spacing: -0.01em;
 }
 .pms-input::placeholder { color: var(--muted); }
-.pms-input[aria-invalid="true"] { border-color: var(--accent); }
+.pms-input[aria-invalid="true"] { border-width: 3px; }
 .pms-input:disabled, .pms-input[readonly] { background: var(--wash); color: var(--muted); }
 .pms-input:focus-visible,
 .pms-btn:focus-visible,
 .pms-link:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 .pms-btn:not(:disabled):hover { background: var(--ink-hover); }
 .pms-link { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
-.pms-link:hover { color: var(--accent); }
+.pms-link:hover { text-decoration-thickness: 2px; }
 .pms-seg { transition: background-color .18s linear; }
 @keyframes pms-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes pms-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
@@ -118,11 +120,14 @@ const SHEET_CSS = `
 }
 `;
 
+// Uses the same monochrome tokens as the sign-in screen: every background,
+// text colour, border, button and error/success state here resolves to
+// black, white or a greyscale tone. Emphasis is carried by solid fills,
+// weight, case and rules -- never by hue.
 export default function Screen() {
   const navigate = useNavigate();
   const location = useLocation();
   const ink = brand.primaryColor;
-  const accent = brand.accentColor;
   const muted = brand.neutralColor;
   const bg = brand.backgroundColor;
   const rowBorder = { borderColor: ink };
@@ -243,7 +248,6 @@ export default function Screen() {
       style={{
         "--ink": ink,
         "--ink-hover": "#2b2b2b",
-        "--accent": accent,
         "--muted": muted,
         "--bg": bg,
         "--wash": "#f5f5f5",
@@ -296,30 +300,23 @@ export default function Screen() {
 
           {invalid ? (
             <div
-              className="pms-rise mt-8 border-2 px-5 py-5 flex items-start gap-3"
-              style={{ borderColor: accent, borderRadius: brand.radius }}
+              className="pms-rise mt-8 px-5 py-5 flex items-start gap-3"
+              style={{ backgroundColor: ink, color: bg, borderRadius: brand.radius }}
               role="alert"
               data-wf="b-1-0"
             >
-              <AlertCircle
-                className="h-5 w-5 mt-[2px] shrink-0"
-                style={{ color: accent }}
-                aria-hidden="true"
-              />
+              <AlertCircle className="h-5 w-5 mt-[2px] shrink-0" aria-hidden="true" />
               <div>
-                <p className="text-[15px] font-bold" style={{ color: ink }}>
+                <p className="text-[15px] font-bold uppercase tracking-[0.06em]">
                   This invitation link doesn't work
                 </p>
-                <p
-                  className="mt-1 text-[13.5px] leading-[1.6] max-w-[60ch]"
-                  style={{ color: muted }}
-                >
+                <p className="mt-1 text-[13.5px] leading-[1.6] max-w-[60ch]">
                   {formError || INVALID_TOKEN_MESSAGE}
                 </p>
                 <button
                   type="button"
                   className="pms-link mt-3 inline-block text-[12px] font-bold uppercase tracking-[0.12em] min-h-[44px]"
-                  style={{ color: ink, background: "transparent" }}
+                  style={{ color: bg, background: "transparent" }}
                   onClick={() => navigate("sign-in")}
                 >
                   Go to sign in
@@ -351,17 +348,15 @@ export default function Screen() {
 
                 {formError && !done ? (
                   <div
-                    className="pms-rise border-2 px-4 py-3 mb-4 flex items-start gap-2"
-                    style={{ borderColor: accent, borderRadius: brand.radius }}
+                    className="pms-rise px-4 py-3 mb-4 flex items-start gap-2"
+                    style={{ backgroundColor: ink, color: bg, borderRadius: brand.radius }}
                     role="alert"
                   >
-                    <AlertCircle
-                      className="h-4 w-4 mt-[2px] shrink-0"
-                      style={{ color: accent }}
-                      aria-hidden="true"
-                    />
-                    <p className="text-[13px] leading-[1.5]" style={{ color: ink }}>
-                      <span className="font-bold">Not submitted. </span>
+                    <AlertCircle className="h-4 w-4 mt-[2px] shrink-0" aria-hidden="true" />
+                    <p className="text-[13px] leading-[1.5]">
+                      <span className="font-bold uppercase tracking-[0.06em]">
+                        Not submitted.{" "}
+                      </span>
                       {formError} Nothing you typed was lost.
                     </p>
                   </div>
@@ -413,14 +408,14 @@ export default function Screen() {
                       onChange={(e) => setField("full_name", e.target.value)}
                       className="pms-input sm:max-w-[360px]"
                       style={{
-                        border: "2px solid " + (errors.full_name ? accent : ink),
+                        border: (errors.full_name ? "3px" : "2px") + " solid " + ink,
                         borderRadius: brand.radius,
                       }}
                       aria-invalid={errors.full_name ? "true" : "false"}
                       aria-describedby={errors.full_name ? "invite-name-error" : undefined}
                     />
                     {errors.full_name ? (
-                      <ErrorNote id="invite-name-error" accent={accent}>
+                      <ErrorNote id="invite-name-error" ink={ink}>
                         {errors.full_name}
                       </ErrorNote>
                     ) : null}
@@ -448,7 +443,7 @@ export default function Screen() {
                         onChange={(e) => setField("password", e.target.value)}
                         className="pms-input sm:max-w-[360px]"
                         style={{
-                          border: "2px solid " + (errors.password ? accent : ink),
+                          border: (errors.password ? "3px" : "2px") + " solid " + ink,
                           borderRadius: brand.radius,
                         }}
                         aria-invalid={errors.password ? "true" : "false"}
@@ -491,7 +486,7 @@ export default function Screen() {
                     </div>
 
                     {errors.password ? (
-                      <ErrorNote id="invite-password-error" accent={accent}>
+                      <ErrorNote id="invite-password-error" ink={ink}>
                         {errors.password}
                       </ErrorNote>
                     ) : null}
@@ -519,7 +514,7 @@ export default function Screen() {
                         onChange={(e) => setField("confirm", e.target.value)}
                         className="pms-input sm:max-w-[360px]"
                         style={{
-                          border: "2px solid " + (errors.confirm ? accent : ink),
+                          border: (errors.confirm ? "3px" : "2px") + " solid " + ink,
                           borderRadius: brand.radius,
                         }}
                         aria-invalid={errors.confirm ? "true" : "false"}
@@ -536,7 +531,7 @@ export default function Screen() {
                       ) : null}
                     </div>
                     {errors.confirm ? (
-                      <ErrorNote id="invite-confirm-error" accent={accent}>
+                      <ErrorNote id="invite-confirm-error" ink={ink}>
                         {errors.confirm}
                       </ErrorNote>
                     ) : null}
@@ -562,7 +557,7 @@ export default function Screen() {
                     {busy ? (
                       <span
                         className="absolute left-0 bottom-0 h-[3px] w-1/4 pms-sweep"
-                        style={{ backgroundColor: accent }}
+                        style={{ backgroundColor: "var(--wash)" }}
                         aria-hidden="true"
                       />
                     ) : null}
