@@ -1,18 +1,23 @@
 @import "tailwindcss";
 
+/* Keep in sync with the approved brand tokens in `@/lib/brand`. The surface,
+   border, fg and hover tokens below are not named directly by the brand but
+   are derived from it (greyscale, off the `--brand-background` and
+   `--brand-neutral` tokens) so the monochrome design system has no color that
+   was not chosen to go with the approved palette. */
 :root {
-  --brand-primary: #111111;
-  --brand-accent: #c2410c;
-  --brand-neutral: #5c5c5c;
-  --brand-radius: 2px;
-  --brand-font-heading: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --brand-font-body: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --brand-primary: #0a0a0a;
+  --brand-accent: #1d3fff;
+  --brand-neutral: #55575c;
+  --brand-radius: 0rem;
+  --brand-font-heading: "Barlow Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --brand-font-body: "Barlow", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --brand-surface: #ffffff;
-  --brand-border: #e2e8f0;
-  --brand-fg: #0f172a;
-  --brand-fg-muted: #64748b;
-  --brand-hover: #f1f5f9;
-  --brand-background: #ffffff;
+  --brand-border: #d9d9d6;
+  --brand-fg: #0a0a0a;
+  --brand-fg-muted: #55575c;
+  --brand-hover: #e7e7e3;
+  --brand-background: #f4f4f0;
 }
 
 body {

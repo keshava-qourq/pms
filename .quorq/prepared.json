@@ -4,9 +4,9 @@
     "@tanstack/react-query"
   ],
   "key": {
-    "app_design_id": "8214f9aa-1e8c-448c-a9ab-ab1915e289e8",
-    "app_design_version": 1,
-    "architecture_document_id": "89a24a70-bac4-416a-854b-705c07923378",
+    "app_design_id": "b89bb24a-7ccb-4dfb-b90f-7088f89cf302",
+    "app_design_version": 2,
+    "architecture_document_id": "122520bd-88af-4bcb-9dcf-97123c1112d2",
     "architecture_version": 1
   },
   "outcome": "prepared",
@@ -66,7 +66,14 @@
       "name": "@tanstack/react-query",
       "status": "installed",
       "version": ">=5.0"
+    },
+    {
+      "ecosystem": "npm",
+      "error": "already provided by the scaffold",
+      "name": "@playwright/test",
+      "status": "skipped",
+      "version": ">=1.40"
     }
   ],
-  "prepared_by_run": "c07d2bca-7856-457d-85dd-e65a04089911"
+  "prepared_by_run": "fc84348c-2bb1-4f65-9448-08f9c37e455b"
 }
