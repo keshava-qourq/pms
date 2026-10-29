@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PMS</title>
+    <!-- Approved brand fonts (fontHeading/fontBody in @/lib/brand): Barlow Condensed
+         Semibold for headings, Barlow Regular for body. Loaded here, once, so every
+         screen's `fontFamily: brand.fontHeading / brand.fontBody` resolves to the real
+         typeface instead of silently falling back to the generic sans-serif stack. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500&family=Barlow+Condensed:wght@600&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>
