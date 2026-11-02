@@ -244,6 +244,12 @@ class ChecklistItemOut(BaseModel):
         from_attributes = True
 
 
+class LabelAttach(BaseModel):
+    """{label_id} as POST /tasks/{id}/labels expects."""
+
+    label_id: str
+
+
 class LabelOut(BaseModel):
     """The label record returned on a task detail and GET /labels."""
 

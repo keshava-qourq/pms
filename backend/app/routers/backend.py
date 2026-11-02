@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import ChecklistItem, Comment, Invitation, Project, Task, User
+from app.models import ChecklistItem, Comment, Invitation, Label, Project, Task, TaskLabel, User
 from app.schemas import (
     AcceptInviteRequest,
     ChecklistItemCreate,
@@ -41,6 +41,8 @@ from app.schemas import (
     CommentOut,
     InvitationCreate,
     InvitationOut,
+    LabelAttach,
+    LabelOut,
     LoginRequest,
     LoginResponse,
     ProjectCreate,
@@ -110,6 +112,24 @@ def _get_checklist_item_or_404(db: Session, id: str) -> ChecklistItem:
     return item
 
 
+def _get_label_or_404(db: Session, id: str) -> Label:
+    label = db.get(Label, id)
+    if label is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found")
+    return label
+
+
+def _task_labels(db: Session, task_id: str) -> list[LabelOut]:
+    labels = (
+        db.query(Label)
+        .join(TaskLabel, TaskLabel.label_id == Label.id)
+        .filter(TaskLabel.task_id == task_id)
+        .order_by(Label.name.asc())
+        .all()
+    )
+    return [LabelOut.model_validate(label) for label in labels]
+
+
 def _comment_out(db: Session, comment: Comment) -> CommentOut:
     author = db.get(User, comment.author_id)
     return CommentOut(
@@ -141,7 +161,7 @@ def _build_task_out(db: Session, task: Task) -> TaskOut:
     task_out = TaskOut.model_validate(task)
     task_out.comments = [_comment_out(db, c) for c in comments]
     task_out.checklist = checklist_outs
-    task_out.labels = []
+    task_out.labels = _task_labels(db, task.id)
     task_out.checklist_total = len(checklist_outs)
     task_out.checklist_complete = sum(1 for item in checklist_outs if item.is_complete)
     return task_out
@@ -362,7 +382,12 @@ async def list_project_tasks(
     """-> [{task}]. JWT required; any signed-in member, 404 for an unknown project."""
     _get_project_or_404(db, id)
     tasks = db.query(Task).filter(Task.project_id == id).order_by(Task.created_at.desc()).all()
-    return [TaskOut.model_validate(task) for task in tasks]
+    outs = []
+    for task in tasks:
+        task_out = TaskOut.model_validate(task)
+        task_out.labels = _task_labels(db, task.id)
+        outs.append(task_out)
+    return outs
 
 
 @router.post(
@@ -537,28 +562,78 @@ async def toggle_checklist_item(
     return ChecklistItemOut.model_validate(item)
 
 
+DEFAULT_LABELS = [
+    ("Bug", "#e03131"),
+    ("Feature", "#2f9e44"),
+    ("Chore", "#495057"),
+    ("Urgent", "#e8590c"),
+]
+
+
+def _ensure_default_labels(db: Session) -> None:
+    """Seed the workspace label catalogue once, the first time it is read."""
+    if db.query(Label).first() is not None:
+        return
+    for name, color in DEFAULT_LABELS:
+        db.add(Label(name=name, color=color))
+    db.commit()
+
+
 # ---- labels -------------------------------------------------------------------
-@router.get("/labels", response_model=StubResponse, dependencies=_auth, tags=["labels"])
-async def list_labels() -> StubResponse:
-    """-> [{label}]. JWT required."""
-    return _stub("GET /labels")
+@router.get("/labels", response_model=list[LabelOut], tags=["labels"])
+async def list_labels(
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> list[LabelOut]:
+    """-> [{id, name, color}]. JWT required; the workspace label catalogue,
+    seeded with a default set the first time it is read."""
+    _ensure_default_labels(db)
+    labels = db.query(Label).order_by(Label.name.asc()).all()
+    return [LabelOut.model_validate(label) for label in labels]
 
 
-@router.post("/tasks/{id}/labels", response_model=StubResponse, dependencies=_auth, tags=["labels"])
-async def apply_label(id: str) -> StubResponse:
-    """{label_id} -> {task_labels}. JWT required."""
-    return _stub(f"POST /tasks/{id}/labels")
+@router.post(
+    "/tasks/{id}/labels",
+    response_model=TaskOut,
+    status_code=status.HTTP_200_OK,
+    tags=["labels"],
+)
+async def apply_label(
+    id: str,
+    payload: LabelAttach,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> TaskOut:
+    """{label_id} -> {task}. JWT required, 404 for an unknown task or label
+    (AC-029). Idempotent: attaching an already-attached label is a no-op."""
+    task = _get_task_or_404(db, id)
+    _get_label_or_404(db, payload.label_id)
+    existing = db.get(TaskLabel, (task.id, payload.label_id))
+    if existing is None:
+        db.add(TaskLabel(task_id=task.id, label_id=payload.label_id))
+        db.commit()
+    return _build_task_out(db, task)
 
 
 @router.delete(
     "/tasks/{id}/labels/{label_id}",
     response_model=None,
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=_auth,
     tags=["labels"],
 )
-async def remove_label(id: str, label_id: str) -> Response:
-    """204, no body. JWT required."""
+async def remove_label(
+    id: str,
+    label_id: str,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    """204, no body. JWT required, 404 for an unknown task or label (AC-030)."""
+    task = _get_task_or_404(db, id)
+    _get_label_or_404(db, label_id)
+    link = db.get(TaskLabel, (task.id, label_id))
+    if link is not None:
+        db.delete(link)
+        db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
