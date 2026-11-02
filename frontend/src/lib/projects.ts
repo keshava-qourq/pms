@@ -28,6 +28,7 @@ export type Task = {
   status: string;
   created_at: string;
   updated_at: string;
+  labels?: TaskLabel[];
 };
 
 export type Comment = {
