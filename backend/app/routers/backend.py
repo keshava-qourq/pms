@@ -66,9 +66,6 @@ from app.tasks import (
 INVITATION_EXPIRY_DAYS = 7
 TASK_COMPLETE_STATUS = "done"
 
-# Applied to every route except /health, /auth/login and /auth/accept-invite.
-_auth = [Depends(get_current_user)]
-
 router = APIRouter()
 
 
@@ -77,10 +74,6 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:  # no
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
-
-
-def _stub(endpoint: str) -> StubResponse:
-    return StubResponse(endpoint=endpoint)
 
 
 def _as_aware_utc(value: datetime) -> datetime:
@@ -639,8 +632,11 @@ async def remove_label(
 
 # ---- notifications --------------------------------------------------------------
 @router.get(
-    "/notifications", response_model=StubResponse, dependencies=_auth, tags=["notifications"]
+    "/notifications",
+    response_model=StubResponse,
+    dependencies=[Depends(get_current_user)],
+    tags=["notifications"],
 )
 async def list_notifications() -> StubResponse:
     """-> [{notification}]. JWT required."""
-    return _stub("GET /notifications")
+    return StubResponse(endpoint="GET /notifications")
