@@ -28,11 +28,7 @@ async function openFreshProject(page: Page, projectName: string) {
   await expect(page).toHaveURL(/\/project$/, { timeout: 5000 });
 }
 
-async function createTask(
-  page: Page,
-  title: string,
-  opts: { status?: string } = {},
-) {
+async function createTask(page: Page, title: string, opts: { status?: string } = {}) {
   await page.getByRole("button", { name: /new task/i }).click();
   await page.getByLabel(/title/i).first().fill(title);
   if (opts.status) {
@@ -43,13 +39,6 @@ async function createTask(
   }
   await page.getByRole("button", { name: /create/i }).click();
   await expect(page.getByText(title)).toBeVisible({ timeout: 10_000 });
-}
-
-/** Locates a card's column section by walking up from its title button. */
-function cardColumn(page: Page, title: string) {
-  return page
-    .locator("section", { has: page.getByRole("button", { name: title, exact: true }) })
-    .first();
 }
 
 test("[AC-020] each seeded task renders as a card in the column matching its status", async ({
