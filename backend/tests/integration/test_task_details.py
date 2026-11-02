@@ -255,9 +255,7 @@ def test_ac030_delete_label_removes_it_and_returns_204(db_session: Session) -> N
     )
     assert attach.status_code in (200, 201), attach.text
 
-    response = client.delete(
-        f"/tasks/{task['id']}/labels/{label['id']}", headers=_auth(member)
-    )
+    response = client.delete(f"/tasks/{task['id']}/labels/{label['id']}", headers=_auth(member))
     assert response.status_code == 204
     assert response.content == b""
 
@@ -280,9 +278,7 @@ def test_nfr001_comment_checklist_and_label_routes_require_a_token(db_session: S
 
     assert client.get(f"/tasks/{task['id']}/comments").status_code == 401
     assert client.post(f"/tasks/{task['id']}/comments", json={"body": "x"}).status_code == 401
-    assert (
-        client.post(f"/tasks/{task['id']}/checklist", json={"title": "x"}).status_code == 401
-    )
+    assert client.post(f"/tasks/{task['id']}/checklist", json={"title": "x"}).status_code == 401
     assert client.patch(f"/checklist/{item['id']}", json={"is_complete": True}).status_code == 401
     assert client.get("/labels").status_code == 401
     assert (
@@ -297,8 +293,7 @@ def test_ac_unknown_task_id_returns_404_for_comments_and_checklist(db_session: S
     unknown_task_id = str(uuid.uuid4())
 
     assert (
-        client.get(f"/tasks/{unknown_task_id}/comments", headers=_auth(member)).status_code
-        == 404
+        client.get(f"/tasks/{unknown_task_id}/comments", headers=_auth(member)).status_code == 404
     )
     assert (
         client.post(
@@ -350,7 +345,5 @@ def test_ac_unknown_label_id_returns_404(db_session: Session) -> None:
     )
     assert attach.status_code == 404
 
-    delete = client.delete(
-        f"/tasks/{task['id']}/labels/{uuid.uuid4()}", headers=_auth(member)
-    )
+    delete = client.delete(f"/tasks/{task['id']}/labels/{uuid.uuid4()}", headers=_auth(member))
     assert delete.status_code == 404

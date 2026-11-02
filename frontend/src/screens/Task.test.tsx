@@ -249,9 +249,12 @@ describe("Task screen", () => {
       ),
     );
     const postCall = fetchMock.mock.calls.find(
-      ([url, init]) => (init as RequestInit)?.method === "POST" && String(url).endsWith("/comments"),
+      ([url, init]) =>
+        (init as RequestInit)?.method === "POST" && String(url).endsWith("/comments"),
     );
-    expect(JSON.parse((postCall![1] as RequestInit).body as string)).toEqual({ body: "Looks good" });
+    expect(JSON.parse((postCall![1] as RequestInit).body as string)).toEqual({
+      body: "Looks good",
+    });
 
     await waitFor(() => expect(screen.getByText("Looks good")).toBeInTheDocument());
     expect(screen.getAllByText("Rhea Okafor").length).toBeGreaterThan(0);

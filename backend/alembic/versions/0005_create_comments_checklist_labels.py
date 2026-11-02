@@ -21,12 +21,8 @@ def upgrade() -> None:
     op.create_table(
         "comments",
         sa.Column("id", sa.String(length=36), primary_key=True),
-        sa.Column(
-            "task_id", sa.String(length=36), sa.ForeignKey("tasks.id"), nullable=False
-        ),
-        sa.Column(
-            "author_id", sa.String(length=36), sa.ForeignKey("users.id"), nullable=False
-        ),
+        sa.Column("task_id", sa.String(length=36), sa.ForeignKey("tasks.id"), nullable=False),
+        sa.Column("author_id", sa.String(length=36), sa.ForeignKey("users.id"), nullable=False),
         sa.Column("body", sa.Text(), nullable=False),
         sa.Column(
             "created_at",
@@ -39,13 +35,9 @@ def upgrade() -> None:
     op.create_table(
         "checklist_items",
         sa.Column("id", sa.String(length=36), primary_key=True),
-        sa.Column(
-            "task_id", sa.String(length=36), sa.ForeignKey("tasks.id"), nullable=False
-        ),
+        sa.Column("task_id", sa.String(length=36), sa.ForeignKey("tasks.id"), nullable=False),
         sa.Column("title", sa.String(length=255), nullable=False),
-        sa.Column(
-            "is_complete", sa.Boolean(), nullable=False, server_default=sa.false()
-        ),
+        sa.Column("is_complete", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("position", sa.Integer(), nullable=False, server_default="0"),
     )
 
@@ -58,12 +50,8 @@ def upgrade() -> None:
 
     op.create_table(
         "task_labels",
-        sa.Column(
-            "task_id", sa.String(length=36), sa.ForeignKey("tasks.id"), nullable=False
-        ),
-        sa.Column(
-            "label_id", sa.String(length=36), sa.ForeignKey("labels.id"), nullable=False
-        ),
+        sa.Column("task_id", sa.String(length=36), sa.ForeignKey("tasks.id"), nullable=False),
+        sa.Column("label_id", sa.String(length=36), sa.ForeignKey("labels.id"), nullable=False),
         sa.PrimaryKeyConstraint("task_id", "label_id"),
     )
 

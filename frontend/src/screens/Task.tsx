@@ -152,9 +152,7 @@ function ScreenInner() {
   const checklistDone = checklist.filter((c) => c.is_complete).length;
 
   const [labelToAdd, setLabelToAdd] = React.useState("");
-  const availableLabels = labelCatalog.filter(
-    (l) => !appliedLabels.some((al) => al.id === l.id),
-  );
+  const availableLabels = labelCatalog.filter((l) => !appliedLabels.some((al) => al.id === l.id));
 
   const addLabel = async (e) => {
     e.preventDefault();
@@ -540,7 +538,12 @@ function ScreenInner() {
               type="submit"
               disabled={!labelToAdd || addLabelMut.isPending}
               className="px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] disabled:opacity-40"
-              style={{ backgroundColor: ink, color: bg, border: "2px solid " + ink, borderRadius: radius }}
+              style={{
+                backgroundColor: ink,
+                color: bg,
+                border: "2px solid " + ink,
+                borderRadius: radius,
+              }}
             >
               Add
             </Button>
@@ -550,7 +553,10 @@ function ScreenInner() {
         {/* ---------- Checklist ---------- */}
         <section className="mt-10 pt-6" style={{ borderTop: "2px solid " + ink }}>
           <div className="flex items-baseline justify-between">
-            <h2 className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: ink }}>
+            <h2
+              className="text-[12px] font-bold uppercase tracking-[0.18em]"
+              style={{ color: ink }}
+            >
               Checklist
             </h2>
             <span className="text-[12px] tabular-nums" style={{ color: neutral }}>
@@ -612,7 +618,12 @@ function ScreenInner() {
               type="submit"
               disabled={addChecklistMut.isPending}
               className="px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] disabled:opacity-40"
-              style={{ backgroundColor: ink, color: bg, border: "2px solid " + ink, borderRadius: radius }}
+              style={{
+                backgroundColor: ink,
+                color: bg,
+                border: "2px solid " + ink,
+                borderRadius: radius,
+              }}
             >
               Add item
             </Button>
@@ -667,7 +678,11 @@ function ScreenInner() {
               style={fieldStyle}
             />
             {commentError ? (
-              <p className="mt-1.5 flex items-center gap-1.5 text-[12px]" style={{ color: accent }} role="alert">
+              <p
+                className="mt-1.5 flex items-center gap-1.5 text-[12px]"
+                style={{ color: accent }}
+                role="alert"
+              >
                 <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
                 {commentError}
               </p>
@@ -676,7 +691,12 @@ function ScreenInner() {
               type="submit"
               disabled={addCommentMut.isPending}
               className="mt-3 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] disabled:opacity-40"
-              style={{ backgroundColor: ink, color: bg, border: "2px solid " + ink, borderRadius: radius }}
+              style={{
+                backgroundColor: ink,
+                color: bg,
+                border: "2px solid " + ink,
+                borderRadius: radius,
+              }}
             >
               {addCommentMut.isPending ? "Posting…" : "Post comment"}
             </Button>
