@@ -6,7 +6,14 @@ import { Icons } from "@/lib/icons";
 import { brand } from "@/lib/brand";
 import { useNavigate } from "@/lib/navigate";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  DndContext,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { queryClient } from "@/lib/queryClient";
 import { getSelectedProjectId } from "@/lib/selectedProject";
 import { setSelectedTaskId } from "@/lib/selectedTask";
@@ -444,7 +451,11 @@ function ScreenInner() {
       >
         <div className="flex items-start gap-2">
           {t.status === "done" ? (
-            <Check aria-hidden="true" className="mt-[2px] h-3.5 w-3.5 shrink-0" style={{ color: MUTED }} />
+            <Check
+              aria-hidden="true"
+              className="mt-[2px] h-3.5 w-3.5 shrink-0"
+              style={{ color: MUTED }}
+            />
           ) : null}
           <button
             type="button"
@@ -468,9 +479,7 @@ function ScreenInner() {
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="tabular-nums truncate" style={{ fontSize: 11, color: MUTED }}>
             {ownerLabel(ownerOptions, t.owner_id)} · {shortDate(t.due_date)}
-            {overdue(t) ? (
-              <span style={{ color: ACCENT, fontWeight: 700 }}> · Overdue</span>
-            ) : null}
+            {overdue(t) ? <span style={{ color: ACCENT, fontWeight: 700 }}> · Overdue</span> : null}
           </span>
           <span className="obs-move flex shrink-0 gap-1 opacity-0 transition-opacity">
             <button

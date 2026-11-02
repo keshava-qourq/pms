@@ -293,7 +293,9 @@ describe("Project screen", () => {
 
     renderProject();
 
-    await waitFor(() => expect(screen.getByText(/couldn't load this project/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/couldn't load this project/i)).toBeInTheDocument(),
+    );
   });
 
   it("[AC-021] dragging a card to another column calls PATCH /tasks/{id} with the new status, moves the card, and survives a reload", async () => {
