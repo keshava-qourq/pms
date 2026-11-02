@@ -5,7 +5,7 @@
 <!-- sdlc:auto:start overview -->
 project management system
 
-**Documentation version:** v9
+**Documentation version:** v10
 <!-- sdlc:auto:end overview -->
 
 ## Contents
@@ -15,7 +15,7 @@ project management system
 |---|---|
 | [Requirements](requirements/README.md) | v2 approved |
 | [Architecture](architecture/README.md) | 7 entries |
-| [Development](development/README.md) | 3 entries |
+| [Development](development/README.md) | 6 entries |
 | [Testing](testing/README.md) | 1 entry |
 | [Deployment](deployment/README.md) | 1 entry |
 | [Maintenance](maintenance/README.md) | 1 entry |
@@ -26,12 +26,12 @@ project management system
 | [Developer guide](development/developer-guide.md) | generated |
 | [API reference](development/api-reference.md) | 21 routes |
 | [Test report](testing/test-report.md) | not run yet |
-| [Tests](testing/test-cases.md) | 110 tests |
+| [Tests](testing/test-cases.md) | 128 tests |
 | [Deployment guide](deployment/deployment-guide.md) | not deployed yet |
 | [Runbook](deployment/runbook.md) | not deployed yet |
 | [Release notes](deployment/release-notes.md) | 0 releases |
 | [Traceability matrix](traceability-matrix.md) | 17 requirements |
-| [Changelog](CHANGELOG.md) | 9 versions |
+| [Changelog](CHANGELOG.md) | 10 versions |
 <!-- sdlc:auto:end contents -->
 
 ## Open gaps
@@ -62,14 +62,8 @@ project management system
 
 ### Development
 
-- Plan input lists sprints and backlog items separately with no explicit field assigning each story/subtask to a specific sprint; sprint-level scope beyond the stated goal text cannot be documented with certainty.
-- US-008-T1, US-008-T2, US-008-T3 have no point estimates recorded.
-- EPIC-001 through EPIC-005 have no point values or assigned role (epics are unassigned by role in the input).
-- No date recorded for the delivery/commit.
-- No test or review evidence included alongside the delivery record.
-- Discrepancy: run status of 'completed' conflicts with delivery evidence covering only 1 of 17 planned stories -- unclear whether other tickets were actually delivered but omitted from input, or whether the 'completed' status is inaccurate/premature.
-- No commit or status records for US-001, US-002, US-003, US-004, US-005, US-006, US-007, US-008 (+ subtasks), US-009, US-010, US-011, US-012, US-014, US-015, US-016, US-017.
-- Cannot determine which sprints (1-4) are actually finished given the missing per-ticket data and absence of explicit sprint-to-item mapping in the plan.
+- Sprint 4 lists no distinct backlog items in this input beyond the goal statement - unclear which specific stories/tasks are scoped to it.
+- Subtasks US-008-T1/T2/T3 have no individual delivery status recorded; only the parent story US-008 is marked delivered.
 
 ### Testing
 

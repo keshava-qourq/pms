@@ -3,9 +3,9 @@
 > Maintained by QuorQ AI SDLC. Text between `sdlc:auto` markers is regenerated; anything outside them is yours and is kept.
 
 <!-- sdlc:auto:start summary -->
-110 tests · Passed 90 · Failed 0 · Skipped 3 · Not run 17
+128 tests · Passed 104 · Failed 0 · Skipped 3 · Not run 21
 
-Acceptance criteria covered: 19/41 · passing: 4/41
+Acceptance criteria covered: 30/41 · passing: 11/41
 <!-- sdlc:auto:end summary -->
 
 <!-- sdlc:auto:start tests -->
@@ -91,9 +91,16 @@ Acceptance criteria covered: 19/41 · passing: 4/41
 | — | test_nfr003_a_few_dozen_projects_list_in_a_single_request_without_pagination_errors | Unit | Passed | `backend/tests/test_flat_access.py` |
 | AC-008 | Project screen > [AC-008] edits a project the signed-in member did not create: saving sends PATCH /projects/{id} and the change is reflected after cache invalidation | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
 | AC-008 | Project screen > [AC-008] edits a task from a project the signed-in member did not create: changing status sends PATCH /tasks/{id} and the change is reflected after cache invalidation | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| AC-020 | Project screen > [AC-020] renders one column per status with each task in the column matching its status, and no seeded task data | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| AC-020 | Project screen > [AC-020] shows an error state when the tasks request fails | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| AC-021 | Project screen > [AC-021] dragging a card to another column calls PATCH /tasks/{id} with the new status, moves the card, and survives a reload | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| AC-022 | Project screen > [AC-022] the list view renders one row per task with title, owner name, due date and status | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| AC-023 | Project screen > [AC-023] updating a task's status in the list view invalidates the shared tasks query so the board reflects it without a reload | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
 | — | Project screen > does not hide or disable editing based on who created the project or task | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| — | Project screen > renders label chips from the API labels[] field on both the board card and the list row | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
 | — | Project screen > shows a loading state, then loads GET /projects/{id} and GET /projects/{id}/tasks and renders the tasks | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
 | — | Project screen > shows an empty-board state when the project has no tasks | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| — | Project screen > shows an empty-list state in the list view when the project has no tasks | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
 | AC-007 | Projects screen > [AC-007] shows a loading state, then every project from GET /projects for any signed-in member; no seeded sample data | Unit | Passed | `frontend/src/screens/Projects.test.tsx` |
 | — | Projects screen > does not hide or disable a project based on who created it, and records the selected project before navigating | Unit | Passed | `frontend/src/screens/Projects.test.tsx` |
 | — | Projects screen > posts to POST /projects on create and refreshes the list from the server cache | Unit | Passed | `frontend/src/screens/Projects.test.tsx` |
@@ -134,6 +141,13 @@ Acceptance criteria covered: 19/41 · passing: 4/41
 | — | test_nfr005_job_retries_with_backoff_on_an_outbound_failure | Unit | Skipped | `backend/tests/test_task_notifications.py` |
 | AC-017 | Task screen > [AC-017] blocks saving a blank title with an inline message and sends no request | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
 | AC-018, AC-019 | Task screen > [AC-018/AC-019] changing status, owner and due date sends one PATCH /tasks/{id} with the new values, reflected after cache invalidation | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-024 | Task screen > [AC-024] posting a comment calls POST /tasks/{id}/comments and the saved comment appears with author and timestamp | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-025 | Task screen > [AC-025] renders existing comments in chronological order from GET /tasks/{id}/comments | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-026 | Task screen > [AC-026] submitting an empty or whitespace-only comment posts nothing and shows an inline prompt | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-027 | Task screen > [AC-027] adding a checklist item calls POST /tasks/{id}/checklist and it appears unchecked | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-028 | Task screen > [AC-028] ticking an item calls PATCH /checklist/{id} and the 'n of m done' count persists across reload | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-029 | Task screen > [AC-029] adding a label from the GET /labels catalogue calls POST /tasks/{id}/labels and the chip renders | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-030 | Task screen > [AC-030] removing a label calls DELETE /tasks/{id}/labels/{label_id} and the chip disappears | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
 | — | Task screen > removes seeded sample task, owner and status data | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
 | — | Task screen > shows a 'no task selected' empty state when nothing was opened | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
 | — | Task screen > shows a loading state, then loads GET /tasks/{id} and renders the task | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
@@ -149,6 +163,17 @@ Acceptance criteria covered: 19/41 · passing: 4/41
 | AC-019 | test_ac019_reassigning_owner_and_due_date_persists_and_is_visible_to_second_member | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
 | AC-015, AC-016 | [AC-015][AC-016] creating a task with owner, due date and status shows it on the board | E2E | Not run yet | `frontend/e2e/tasks.spec.ts` |
 | AC-018 | [AC-018][NFR-007] changing a task's status is reflected in both the board and the list view | E2E | Not run yet | `frontend/e2e/tasks.spec.ts` |
+
+## Sprint 3
+
+### US-008: Kanban board view of tasks
+
+| Criteria | Test | Level | Result | File |
+|---|---|---|---|---|
+| AC-020 | [AC-020] each seeded task renders as a card in the column matching its status | E2E | Not run yet | `frontend/e2e/kanban.spec.ts` |
+| AC-021 | [AC-021] dragging a card to another column moves it and the new status survives a reload | E2E | Not run yet | `frontend/e2e/kanban.spec.ts` |
+| AC-022 | [AC-022] list rows show title, owner, due date and status | E2E | Not run yet | `frontend/e2e/kanban.spec.ts` |
+| AC-023 | [AC-023] changing a task's status from the list view updates the board without a reload | E2E | Not run yet | `frontend/e2e/kanban.spec.ts` |
 
 ## Project setup
 
