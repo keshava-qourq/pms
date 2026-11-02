@@ -175,6 +175,84 @@ class TaskOut(BaseModel):
     due_date: date | None = None
     created_at: datetime
     updated_at: datetime
+    comments: list["CommentOut"] = []
+    checklist: list["ChecklistItemOut"] = []
+    labels: list["LabelOut"] = []
+    checklist_total: int = 0
+    checklist_complete: int = 0
 
     class Config:
         from_attributes = True
+
+
+class CommentCreate(BaseModel):
+    """{body} as POST /tasks/{id}/comments expects."""
+
+    body: str
+
+    @field_validator("body")
+    @classmethod
+    def body_must_not_be_blank(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("body must not be blank")
+        return value
+
+
+class CommentOut(BaseModel):
+    """The comment record returned by the comment routes, with author name (AC-024)."""
+
+    id: str
+    task_id: str
+    author_id: str
+    author_name: str | None = None
+    body: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ChecklistItemCreate(BaseModel):
+    """{title} as POST /tasks/{id}/checklist expects."""
+
+    title: str
+
+    @field_validator("title")
+    @classmethod
+    def title_must_not_be_blank(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("title must not be blank")
+        return value
+
+
+class ChecklistItemUpdate(BaseModel):
+    """{is_complete} as PATCH /checklist/{id} expects."""
+
+    is_complete: bool
+
+
+class ChecklistItemOut(BaseModel):
+    """The checklist item record returned by the checklist routes."""
+
+    id: str
+    task_id: str
+    title: str
+    is_complete: bool
+    position: int
+
+    class Config:
+        from_attributes = True
+
+
+class LabelOut(BaseModel):
+    """The label record returned on a task detail and GET /labels."""
+
+    id: str
+    name: str
+    color: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+TaskOut.model_rebuild()

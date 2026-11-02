@@ -14,12 +14,22 @@ not `Base.metadata.create_all`.
 import uuid
 from datetime import UTC, date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
-__all__ = ["Base", "Invitation", "Project", "Task", "User"]
+__all__ = [
+    "Base",
+    "ChecklistItem",
+    "Comment",
+    "Invitation",
+    "Label",
+    "Project",
+    "Task",
+    "TaskLabel",
+    "User",
+]
 
 
 class User(Base):
@@ -81,3 +91,40 @@ class Task(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id"), nullable=False)
+    author_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+    body: Mapped[str] = mapped_column(Text(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+
+class ChecklistItem(Base):
+    __tablename__ = "checklist_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class Label(Base):
+    __tablename__ = "labels"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+
+class TaskLabel(Base):
+    __tablename__ = "task_labels"
+
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id"), primary_key=True)
+    label_id: Mapped[str] = mapped_column(String(36), ForeignKey("labels.id"), primary_key=True)

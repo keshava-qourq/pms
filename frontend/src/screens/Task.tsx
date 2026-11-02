@@ -10,11 +10,21 @@ import { useNavigate } from "@/lib/navigate";
 import { queryClient } from "@/lib/queryClient";
 import { getSelectedTaskId } from "@/lib/selectedTask";
 import { getUser } from "@/lib/api";
-import { useTask, useUpdateTask } from "@/lib/projects";
+import {
+  useTask,
+  useUpdateTask,
+  useComments,
+  useAddComment,
+  useAddChecklistItem,
+  useToggleChecklistItem,
+  useLabels,
+  useAddLabel,
+  useRemoveLabel,
+} from "@/lib/projects";
 
-const { Button, Input, Textarea, Label, Select, Empty } = UI;
+const { Button, Input, Textarea, Label, Select, Checkbox, Empty } = UI;
 
-const { ArrowLeft, AlertCircle, CheckCircle, Clock } = Icons;
+const { ArrowLeft, AlertCircle, CheckCircle, Clock, X } = Icons;
 
 const STATUSES = [
   { key: "todo", label: "To do" },
@@ -77,6 +87,89 @@ function ScreenInner() {
     }
     return Array.from(options, ([id, name]) => ({ id, name }));
   }, [task, currentUser]);
+
+  const projectId = task ? task.project_id : null;
+  const commentsQuery = useComments(taskId);
+  const addCommentMut = useAddComment(taskId, projectId);
+  const addChecklistMut = useAddChecklistItem(taskId, projectId);
+  const toggleChecklistMut = useToggleChecklistItem(taskId, projectId);
+  const labelsQuery = useLabels();
+  const addLabelMut = useAddLabel(taskId, projectId);
+  const removeLabelMut = useRemoveLabel(taskId, projectId);
+
+  const comments = Array.isArray(commentsQuery.data) ? commentsQuery.data : [];
+  const checklist = (detail && detail.checklist) || [];
+  const appliedLabels = (detail && detail.labels) || [];
+  const labelCatalog = Array.isArray(labelsQuery.data) ? labelsQuery.data : [];
+
+  const authorName = (authorId) => {
+    if (currentUser && String(currentUser.id) === String(authorId)) {
+      return currentUser.name || currentUser.email || "You";
+    }
+    return `Member ${String(authorId).slice(0, 8)}`;
+  };
+
+  const [commentText, setCommentText] = React.useState("");
+  const [commentError, setCommentError] = React.useState("");
+
+  const submitComment = async (e) => {
+    e.preventDefault();
+    if (!commentText.trim()) {
+      setCommentError("Enter some text before posting a comment.");
+      return;
+    }
+    setCommentError("");
+    try {
+      await addCommentMut.mutateAsync(commentText.trim());
+      setCommentText("");
+    } catch {
+      setCommentError("We couldn't post that comment. Try again.");
+    }
+  };
+
+  const [checklistTitle, setChecklistTitle] = React.useState("");
+  const [checklistError, setChecklistError] = React.useState("");
+
+  const submitChecklistItem = async (e) => {
+    e.preventDefault();
+    if (!checklistTitle.trim()) {
+      setChecklistError("Enter a checklist item before adding it.");
+      return;
+    }
+    setChecklistError("");
+    try {
+      await addChecklistMut.mutateAsync(checklistTitle.trim());
+      setChecklistTitle("");
+    } catch {
+      setChecklistError("We couldn't add that item. Try again.");
+    }
+  };
+
+  const toggleItem = (item) => {
+    toggleChecklistMut.mutate({ id: item.id, is_complete: !item.is_complete });
+  };
+
+  const checklistDone = checklist.filter((c) => c.is_complete).length;
+
+  const [labelToAdd, setLabelToAdd] = React.useState("");
+  const availableLabels = labelCatalog.filter(
+    (l) => !appliedLabels.some((al) => al.id === l.id),
+  );
+
+  const addLabel = async (e) => {
+    e.preventDefault();
+    if (!labelToAdd) return;
+    try {
+      await addLabelMut.mutateAsync(labelToAdd);
+      setLabelToAdd("");
+    } catch {
+      // surfaced via mutation state below
+    }
+  };
+
+  const removeLabel = (labelId) => {
+    removeLabelMut.mutate(labelId);
+  };
 
   const [form, setForm] = React.useState(() => formFromTask(null));
   const [titleError, setTitleError] = React.useState("");
@@ -391,6 +484,204 @@ function ScreenInner() {
             </span>
           </div>
         </form>
+
+        {/* ---------- Labels ---------- */}
+        <section className="mt-10 pt-6" style={{ borderTop: "2px solid " + ink }}>
+          <h2 className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: ink }}>
+            Labels
+          </h2>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {appliedLabels.length === 0 ? (
+              <span className="text-[12px]" style={{ color: neutral }}>
+                No labels yet.
+              </span>
+            ) : (
+              appliedLabels.map((l) => (
+                <span
+                  key={l.id}
+                  className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] font-bold uppercase tracking-[0.1em]"
+                  style={{ border: "1px solid " + ink, borderRadius: radius, color: ink }}
+                >
+                  {l.name}
+                  <button
+                    type="button"
+                    aria-label={`Remove label ${l.name}`}
+                    onClick={() => removeLabel(l.id)}
+                    className="inline-flex"
+                    style={{ color: ink, background: "none", border: "none" }}
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
+          <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={addLabel}>
+            <div>
+              <Label htmlFor="label-select" className={labelCls} style={{ color: ink }}>
+                Add label
+              </Label>
+              <Select
+                id="label-select"
+                value={labelToAdd}
+                onChange={(e) => setLabelToAdd(e.target.value)}
+                className="px-3 py-2 text-[13px]"
+                style={fieldStyle}
+              >
+                <option value="">Choose a label</option>
+                {availableLabels.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Button
+              type="submit"
+              disabled={!labelToAdd || addLabelMut.isPending}
+              className="px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] disabled:opacity-40"
+              style={{ backgroundColor: ink, color: bg, border: "2px solid " + ink, borderRadius: radius }}
+            >
+              Add
+            </Button>
+          </form>
+        </section>
+
+        {/* ---------- Checklist ---------- */}
+        <section className="mt-10 pt-6" style={{ borderTop: "2px solid " + ink }}>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: ink }}>
+              Checklist
+            </h2>
+            <span className="text-[12px] tabular-nums" style={{ color: neutral }}>
+              {checklistDone} of {checklist.length} done
+            </span>
+          </div>
+
+          {checklist.length === 0 ? (
+            <p className="mt-3 text-[12px]" style={{ color: neutral }}>
+              No checklist items yet.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {checklist.map((item) => (
+                <li key={item.id} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`checklist-${item.id}`}
+                    checked={item.is_complete}
+                    onChange={() => toggleItem(item)}
+                  />
+                  <label
+                    htmlFor={`checklist-${item.id}`}
+                    className="text-[13px]"
+                    style={{
+                      color: item.is_complete ? neutral : ink,
+                      textDecoration: item.is_complete ? "line-through" : "none",
+                    }}
+                  >
+                    {item.title}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={submitChecklistItem}>
+            <div className="flex-1 min-w-[220px]">
+              <Label htmlFor="checklist-title" className={labelCls} style={{ color: ink }}>
+                New item
+              </Label>
+              <Input
+                id="checklist-title"
+                value={checklistTitle}
+                onChange={(e) => {
+                  setChecklistTitle(e.target.value);
+                  if (checklistError) setChecklistError("");
+                }}
+                placeholder="Describe a subtask"
+                className="w-full px-3 py-2 text-[14px]"
+                style={fieldStyle}
+              />
+              {checklistError ? (
+                <p className="mt-1.5 text-[12px]" style={{ color: accent }} role="alert">
+                  {checklistError}
+                </p>
+              ) : null}
+            </div>
+            <Button
+              type="submit"
+              disabled={addChecklistMut.isPending}
+              className="px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] disabled:opacity-40"
+              style={{ backgroundColor: ink, color: bg, border: "2px solid " + ink, borderRadius: radius }}
+            >
+              Add item
+            </Button>
+          </form>
+        </section>
+
+        {/* ---------- Comments ---------- */}
+        <section className="mt-10 pt-6" style={{ borderTop: "2px solid " + ink }}>
+          <h2 className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: ink }}>
+            Comments
+          </h2>
+
+          {commentsQuery.isLoading ? (
+            <p className="mt-3 text-[12px]" style={{ color: neutral }} role="status">
+              Loading comments…
+            </p>
+          ) : comments.length === 0 ? (
+            <p className="mt-3 text-[12px]" style={{ color: neutral }}>
+              No comments yet.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-4">
+              {comments.map((c) => (
+                <li key={c.id} className="pb-3" style={{ borderBottom: "1px solid " + neutral }}>
+                  <div className="flex items-baseline gap-2 text-[11px] font-bold uppercase tracking-[0.1em]">
+                    <span style={{ color: ink }}>{authorName(c.author_id)}</span>
+                    <span className="tabular-nums" style={{ color: neutral }}>
+                      {fmtDate(c.created_at)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[13px] leading-[1.5]" style={{ color: ink }}>
+                    {c.body}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form className="mt-4" onSubmit={submitComment}>
+            <Label htmlFor="comment-body" className={labelCls} style={{ color: ink }}>
+              Add a comment
+            </Label>
+            <Textarea
+              id="comment-body"
+              rows={3}
+              value={commentText}
+              onChange={(e) => {
+                setCommentText(e.target.value);
+                if (commentError) setCommentError("");
+              }}
+              className="w-full px-3 py-2 text-[14px] leading-[1.55]"
+              style={fieldStyle}
+            />
+            {commentError ? (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[12px]" style={{ color: accent }} role="alert">
+                <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                {commentError}
+              </p>
+            ) : null}
+            <Button
+              type="submit"
+              disabled={addCommentMut.isPending}
+              className="mt-3 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] disabled:opacity-40"
+              style={{ backgroundColor: ink, color: bg, border: "2px solid " + ink, borderRadius: radius }}
+            >
+              {addCommentMut.isPending ? "Posting…" : "Post comment"}
+            </Button>
+          </form>
+        </section>
       </div>
     </div>
   );

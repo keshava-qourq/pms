@@ -154,3 +154,87 @@ export function useTask(id: string | null) {
     enabled: Boolean(id),
   });
 }
+
+// -- Task detail: comments, checklist, labels (US-010-3) ----------------
+
+export function useComments(taskId: string | null) {
+  return useQuery({
+    queryKey: ["tasks", taskId, "comments"],
+    queryFn: () => apiFetch<Comment[]>(`/tasks/${taskId}/comments`),
+    enabled: Boolean(taskId),
+  });
+}
+
+function invalidateTaskAndProjectTasks(
+  queryClient: ReturnType<typeof useQueryClient>,
+  taskId: string | null,
+  projectId: string | null,
+) {
+  queryClient.invalidateQueries({ queryKey: ["tasks", taskId] });
+  queryClient.invalidateQueries({ queryKey: ["tasks", taskId, "comments"] });
+  queryClient.invalidateQueries({ queryKey: ["projects", projectId, "tasks"] });
+}
+
+export function useAddComment(taskId: string | null, projectId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) =>
+      apiFetch<Comment>(`/tasks/${taskId}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ body }),
+      }),
+    onSuccess: () => invalidateTaskAndProjectTasks(queryClient, taskId, projectId),
+  });
+}
+
+export function useAddChecklistItem(taskId: string | null, projectId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (title: string) =>
+      apiFetch<ChecklistItem>(`/tasks/${taskId}/checklist`, {
+        method: "POST",
+        body: JSON.stringify({ title }),
+      }),
+    onSuccess: () => invalidateTaskAndProjectTasks(queryClient, taskId, projectId),
+  });
+}
+
+export function useToggleChecklistItem(taskId: string | null, projectId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, is_complete }: { id: string; is_complete: boolean }) =>
+      apiFetch<ChecklistItem>(`/checklist/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_complete }),
+      }),
+    onSuccess: () => invalidateTaskAndProjectTasks(queryClient, taskId, projectId),
+  });
+}
+
+export function useLabels() {
+  return useQuery({
+    queryKey: ["labels"],
+    queryFn: () => apiFetch<TaskLabel[]>("/labels"),
+  });
+}
+
+export function useAddLabel(taskId: string | null, projectId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (labelId: string) =>
+      apiFetch(`/tasks/${taskId}/labels`, {
+        method: "POST",
+        body: JSON.stringify({ label_id: labelId }),
+      }),
+    onSuccess: () => invalidateTaskAndProjectTasks(queryClient, taskId, projectId),
+  });
+}
+
+export function useRemoveLabel(taskId: string | null, projectId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (labelId: string) =>
+      apiFetch(`/tasks/${taskId}/labels/${labelId}`, { method: "DELETE" }),
+    onSuccess: () => invalidateTaskAndProjectTasks(queryClient, taskId, projectId),
+  });
+}

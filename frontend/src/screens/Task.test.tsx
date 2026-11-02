@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -42,6 +42,13 @@ const DETAIL = {
 
 describe("Task screen", () => {
   afterEach(() => {
+    // Unmount before touching session/global/query state: the root setupFile's
+    // own `afterEach(cleanup)` runs after this (describe-level) hook, so without
+    // an explicit early cleanup() here the screen is still mounted and subscribed
+    // when the cache is cleared and fetch is unstubbed below -- its active query
+    // observers then refetch immediately with the real (un-mocked) fetch and
+    // poison the shared queryClient cache for the next test.
+    cleanup();
     clearSession();
     sessionStorage.clear();
     vi.unstubAllGlobals();
@@ -150,6 +157,283 @@ describe("Task screen", () => {
     expect(body).toMatchObject({ status: "done", owner_id: "u9", due_date: "2026-12-15" });
 
     await waitFor(() => expect(screen.getByText(/all changes saved/i)).toBeInTheDocument());
+  });
+
+  function routedFetch(overrides: Record<string, (init?: RequestInit) => unknown>) {
+    return vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      for (const pattern of Object.keys(overrides)) {
+        const [m, path] = pattern.split(" ");
+        if (method === m && url.endsWith(path)) {
+          return Promise.resolve(jsonResponse(overrides[pattern](init)));
+        }
+      }
+      if (method === "GET" && url.endsWith("/tasks/t-1")) {
+        return Promise.resolve(jsonResponse(DETAIL));
+      }
+      if (method === "GET" && url.endsWith("/tasks/t-1/comments")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (method === "GET" && url.endsWith("/labels")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      return Promise.resolve(jsonResponse({}));
+    });
+  }
+
+  it("[AC-025] renders existing comments in chronological order from GET /tasks/{id}/comments", async () => {
+    setSession("jwt-1", { id: "u1", email: "me@example.com" });
+    setSelectedTaskId("t-1");
+    const comments = [
+      {
+        id: "c-1",
+        task_id: "t-1",
+        author_id: "u1",
+        body: "First comment",
+        created_at: "2026-10-02T00:00:00Z",
+      },
+      {
+        id: "c-2",
+        task_id: "t-1",
+        author_id: "u2",
+        body: "Second comment",
+        created_at: "2026-10-03T00:00:00Z",
+      },
+    ];
+    const fetchMock = routedFetch({ "GET /tasks/t-1/comments": () => comments });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTask();
+
+    await waitFor(() => expect(screen.getByText("First comment")).toBeInTheDocument());
+    const bodies = screen.getAllByText(/comment$/).map((el) => el.textContent);
+    expect(bodies.indexOf("First comment")).toBeLessThan(bodies.indexOf("Second comment"));
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/tasks/t-1/comments"))).toBe(
+      true,
+    );
+  });
+
+  it("[AC-024] posting a comment calls POST /tasks/{id}/comments and the saved comment appears with author and timestamp", async () => {
+    setSession("jwt-1", { id: "u1", email: "me@example.com", name: "Rhea Okafor" });
+    setSelectedTaskId("t-1");
+    let posted: unknown[] = [];
+    const fetchMock = routedFetch({
+      "GET /tasks/t-1/comments": () => posted,
+      "POST /tasks/t-1/comments": (init) => {
+        const body = JSON.parse(init!.body as string);
+        const comment = {
+          id: "c-9",
+          task_id: "t-1",
+          author_id: "u1",
+          body: body.body,
+          created_at: "2026-10-05T00:00:00Z",
+        };
+        posted = [comment];
+        return comment;
+      },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    renderTask();
+
+    await waitFor(() => expect(screen.getByText("Map legacy invoices")).toBeInTheDocument());
+
+    await user.type(screen.getByLabelText(/add a comment/i), "Looks good");
+    await user.click(screen.getByRole("button", { name: /post comment/i }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/tasks/t-1/comments"),
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+    const postCall = fetchMock.mock.calls.find(
+      ([url, init]) => (init as RequestInit)?.method === "POST" && String(url).endsWith("/comments"),
+    );
+    expect(JSON.parse((postCall![1] as RequestInit).body as string)).toEqual({ body: "Looks good" });
+
+    await waitFor(() => expect(screen.getByText("Looks good")).toBeInTheDocument());
+    expect(screen.getAllByText("Rhea Okafor").length).toBeGreaterThan(0);
+  });
+
+  it("[AC-026] submitting an empty or whitespace-only comment posts nothing and shows an inline prompt", async () => {
+    setSession("jwt-1", { id: "u1", email: "me@example.com" });
+    setSelectedTaskId("t-1");
+    const fetchMock = routedFetch({});
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    renderTask();
+
+    await waitFor(() => expect(screen.getByText("Map legacy invoices")).toBeInTheDocument());
+
+    await user.type(screen.getByLabelText(/add a comment/i), "   ");
+    await user.click(screen.getByRole("button", { name: /post comment/i }));
+
+    expect(await screen.findByText(/enter some text/i)).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          (init as RequestInit)?.method === "POST" && String(url).endsWith("/comments"),
+      ),
+    ).toBe(false);
+  });
+
+  it("[AC-027] adding a checklist item calls POST /tasks/{id}/checklist and it appears unchecked", async () => {
+    setSession("jwt-1", { id: "u1", email: "me@example.com" });
+    setSelectedTaskId("t-1");
+    const fetchMock = routedFetch({
+      "POST /tasks/t-1/checklist": (init) => {
+        const body = JSON.parse(init!.body as string);
+        return { id: "ci-1", task_id: "t-1", title: body.title, is_complete: false, position: 0 };
+      },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    renderTask();
+
+    await waitFor(() => expect(screen.getByText("Map legacy invoices")).toBeInTheDocument());
+
+    await user.type(screen.getByLabelText(/new item/i), "Write tests");
+    await user.click(screen.getByRole("button", { name: /add item/i }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/tasks/t-1/checklist"),
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+  });
+
+  it("[AC-028] ticking an item calls PATCH /checklist/{id} and the 'n of m done' count persists across reload", async () => {
+    setSession("jwt-1", { id: "u1", email: "me@example.com" });
+    setSelectedTaskId("t-1");
+    let items = [
+      { id: "ci-1", task_id: "t-1", title: "Write tests", is_complete: false, position: 0 },
+      { id: "ci-2", task_id: "t-1", title: "Ship it", is_complete: false, position: 1 },
+    ];
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      if (method === "PATCH" && url.endsWith("/checklist/ci-1")) {
+        const body = JSON.parse(init!.body as string);
+        items = items.map((i) => (i.id === "ci-1" ? { ...i, is_complete: body.is_complete } : i));
+        return Promise.resolve(jsonResponse(items[0]));
+      }
+      if (method === "GET" && url.endsWith("/tasks/t-1")) {
+        return Promise.resolve(jsonResponse({ ...DETAIL, checklist: items }));
+      }
+      if (method === "GET" && url.endsWith("/tasks/t-1/comments")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (method === "GET" && url.endsWith("/labels")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      return Promise.resolve(jsonResponse({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    renderTask();
+
+    await waitFor(() => expect(screen.getByText("Write tests")).toBeInTheDocument());
+    expect(screen.getByText("0 of 2 done")).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Write tests"));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/checklist/ci-1"),
+        expect.objectContaining({ method: "PATCH" }),
+      ),
+    );
+    await waitFor(() => expect(screen.getByText("1 of 2 done")).toBeInTheDocument());
+  });
+
+  it("[AC-029] adding a label from the GET /labels catalogue calls POST /tasks/{id}/labels and the chip renders", async () => {
+    setSession("jwt-1", { id: "u1", email: "me@example.com" });
+    setSelectedTaskId("t-1");
+    let labels: unknown[] = [];
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      if (method === "GET" && url.endsWith("/labels")) {
+        return Promise.resolve(
+          jsonResponse([
+            { id: "l-1", name: "Design", color: "neutral" },
+            { id: "l-2", name: "Blocked", color: "accent" },
+          ]),
+        );
+      }
+      if (method === "POST" && url.endsWith("/tasks/t-1/labels")) {
+        const body = JSON.parse(init!.body as string);
+        labels = [{ id: body.label_id, name: body.label_id === "l-1" ? "Design" : "Blocked" }];
+        return Promise.resolve(jsonResponse({ task_id: "t-1", label_id: body.label_id }));
+      }
+      if (method === "GET" && url.endsWith("/tasks/t-1")) {
+        return Promise.resolve(jsonResponse({ ...DETAIL, labels }));
+      }
+      if (method === "GET" && url.endsWith("/tasks/t-1/comments")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      return Promise.resolve(jsonResponse({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    renderTask();
+
+    await waitFor(() => expect(screen.getByText("Map legacy invoices")).toBeInTheDocument());
+
+    await user.selectOptions(screen.getByLabelText(/add label/i), "l-1");
+    await user.click(screen.getByRole("button", { name: /^add$/i }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/tasks/t-1/labels"),
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+    await waitFor(() => expect(screen.getByText("Design")).toBeInTheDocument());
+  });
+
+  it("[AC-030] removing a label calls DELETE /tasks/{id}/labels/{label_id} and the chip disappears", async () => {
+    setSession("jwt-1", { id: "u1", email: "me@example.com" });
+    setSelectedTaskId("t-1");
+    let labels = [{ id: "l-1", name: "Design", color: "neutral" }];
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      if (method === "DELETE" && url.endsWith("/tasks/t-1/labels/l-1")) {
+        labels = [];
+        return Promise.resolve({ ok: true, status: 204, json: async () => undefined });
+      }
+      if (method === "GET" && url.endsWith("/tasks/t-1")) {
+        return Promise.resolve(jsonResponse({ ...DETAIL, labels }));
+      }
+      if (method === "GET" && url.endsWith("/tasks/t-1/comments")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (method === "GET" && url.endsWith("/labels")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      return Promise.resolve(jsonResponse({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    renderTask();
+
+    await waitFor(() => expect(screen.getByText("Design")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /remove label design/i }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/tasks/t-1/labels/l-1"),
+        expect.objectContaining({ method: "DELETE" }),
+      ),
+    );
+    await waitFor(() => expect(screen.queryByText("Design")).not.toBeInTheDocument());
   });
 
   it("removes seeded sample task, owner and status data", async () => {
