@@ -5,7 +5,7 @@
 <!-- sdlc:auto:start overview -->
 project management system
 
-**Documentation version:** v10
+**Documentation version:** v11
 <!-- sdlc:auto:end overview -->
 
 ## Contents
@@ -13,7 +13,7 @@ project management system
 <!-- sdlc:auto:start contents -->
 | Document | State |
 |---|---|
-| [Requirements](requirements/README.md) | v2 approved |
+| [Requirements](requirements/README.md) | v3 approved |
 | [Architecture](architecture/README.md) | 7 entries |
 | [Development](development/README.md) | 6 entries |
 | [Testing](testing/README.md) | 1 entry |
@@ -30,8 +30,8 @@ project management system
 | [Deployment guide](deployment/deployment-guide.md) | not deployed yet |
 | [Runbook](deployment/runbook.md) | not deployed yet |
 | [Release notes](deployment/release-notes.md) | 0 releases |
-| [Traceability matrix](traceability-matrix.md) | 17 requirements |
-| [Changelog](CHANGELOG.md) | 10 versions |
+| [Traceability matrix](traceability-matrix.md) | 18 requirements |
+| [Changelog](CHANGELOG.md) | 11 versions |
 <!-- sdlc:auto:end contents -->
 
 ## Open gaps
@@ -39,17 +39,21 @@ project management system
 <!-- sdlc:auto:start open-gaps -->
 ### Requirements
 
-- Conflict: this stack's rationale describes S3 for 'task file attachments' and PostgreSQL modeling 'timeline dependencies between tasks' and 'activity history', but the requirements explicitly scope file attachments, Gantt/timeline dependencies, and activity history OUT of this MVP (see EPIC-003 and EPIC-005 assumptions). Needs reconciliation: either the tech rationale is written for the broader future vision rather than this MVP, or scope is understated.
-- Backend rationale states it 'fans updates out to Slack and email', but no user story in this requirements set describes task/project update notifications to Slack or email (only US-002 admin-invite email is covered). Gap: notification-trigger requirements are undocumented.
-- Conflict: S3 file storage is justified by 'task file attachments', which the requirements (EPIC-003, EPIC-005) explicitly defer out of this MVP scope. No in-scope user story currently requires file upload/storage.
-- No user story describes what triggers a Slack message or an email notification (beyond the admin invite email in US-002) -- the 'fan out updates' behavior implied by this service and the backend rationale is undocumented at the requirement level.
-- 'Admin tier' for invite-only privilege is referenced in tech rationale but no requirement defines whether admins have any other special capability beyond inviting (see US-003 gap).
-- No regulated industry or compliance domain was named for this project, so no regulatory traceability obligations apply per the stated assumption -- confirm this remains true before architecture/design.
-- Deferred-to-later items (timeline/Gantt, dependencies, milestones, file attachments, activity history) are explicitly out of this MVP -- see conflict noted in TECH-STACK-001/SERVICES-001 regarding S3 attachments and PostgreSQL dependency/activity-history rationale being written against the broader (not MVP) scope.
-- Comments/checklists/labels are flagged as assumed rather than explicitly confirmed -- recommend product-owner sign-off before architecture locks these in.
-- File attachments and activity history are deferred here, reinforcing the conflict with the approved tech stack/services rationale (S3 for attachments, PostgreSQL for activity history) documented in TECH-STACK-001/SERVICES-001.
-- Admin's distinguishing power is stated only as 'invite new members' (US-002); no other admin-only capability is defined anywhere in this input -- confirm whether admin has any other function before architecture defines roles/permissions.
-- This is a verification/testing-oriented story defined at requirements time; actual execution and results belong to the testing phase, which has not started -- no test results exist yet to confirm AC-040/AC-041.
+- Conflict: the React 19 rationale cites a 'Gantt/timeline with dependencies' view as part of the product's core value, but EPIC-004's stated assumption explicitly excludes the timeline/Gantt view with dependencies and milestones from this MVP scope. Needs product-owner clarification on which is authoritative.
+- Conflict: the PostgreSQL rationale cites modeling 'activity history reliably' as a driver, but EPIC-003's assumption explicitly defers activity history to a later version. Flagging discrepancy rather than resolving it.
+- Conflict: the AWS/S3 rationale states 'Tasks support file attachments' and justifies S3 for 'task file attachments', but EPIC-003's assumption explicitly excludes file attachments from this MVP scope. Needs clarification on whether attachments are in or out for this release.
+- No user story or acceptance criterion specifies which events trigger a Slack message or an email notification (e.g. task created, status changed, comment posted, assignment changed). The services section describes the integration exists but not its triggering rules -- needs a requirement or AC before design/build.
+- S3 file-attachment service is approved for runtime, but as noted under REQ-TECH-001, EPIC-003 explicitly places file attachments out of MVP scope -- open conflict on whether this service is actually needed for this release.
+- No industry or domain-specific compliance skill was named for this project, so no regulatory traceability was applicable beyond the general single-region/no-special-requirements assumption stated in the input.
+- No story covers password reset / forgot-password flow, account lockout, or session expiry -- not addressed anywhere in this requirement set.
+- Assumption stated but not independently confirmed: single-region operation with no special regulatory/data-residency requirements (carried from EPIC-001 context, not a specific AC).
+- No explicit limit or archiving/deletion behavior for projects is described -- only creation and editing are covered.
+- The set of valid task statuses (e.g. names, order, count of workflow stages) is never enumerated in any US or AC -- needed before board columns/list values can be built.
+- As flagged under REQ-TECH-001, this epic's deferral of file attachments and activity history conflicts with the AWS/PostgreSQL rationale that assumes these features exist -- unresolved discrepancy.
+- As flagged under REQ-TECH-001, the React 19 stack rationale cites the Gantt/timeline view as a core driver while this epic explicitly excludes it from MVP -- unresolved discrepancy to confirm with product owner.
+- US-017 describes QA verification intent but no test results or execution records exist yet in the input; this entry documents only the requirement/AC, not actual test outcomes.
+- Comments, checklists, and labels are flagged in the input itself as assumed rather than explicitly confirmed by the product owner -- recommend confirming before/at design handoff.
+- No AC specifies comment editing or deletion, checklist item deletion/reordering, or label creation/management (e.g. who defines the label set, color/text, max count) -- left unspecified.
 
 ### Architecture
 

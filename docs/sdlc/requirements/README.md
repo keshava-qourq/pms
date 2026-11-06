@@ -5,229 +5,123 @@
 <!-- sdlc:auto:start narrative -->
 ## Summary
 
-### SCOPE-001 · approved · source: requirements:scope
+### REQ-TECH-001 · approved · source: requirements:technology_stack
 
-PMS v2 is a lightweight MVP project management tool for an internal team of up to ~25 users managing a few dozen active projects. Scope covers sign-in, projects, tasks, Kanban/list views, comments, checklists, and labels.
+Product owner approved a fixed stack: FastAPI 0.115 backend, AWS cloud, PostgreSQL 16 database, React 19 frontend. Rationale ties each choice to flat-access CRUD, one-way Slack/email fan-out, relational task data, and the three interchangeable task views (board/list/timeline) with drag-and-drop.
 
-Delivery scope: lightweight. Requirements version: 2. Capabilities in scope: team member sign-in (email/password only, no SSO), projects to organize work, tasks with owners/due dates/statuses, Kanban board view, task list view, task comments, checklists/subtasks, labels, projects overview dashboard. Out of scope (explicitly excluded, not to be designed or built): native iOS/Android mobile apps; two-way sync with external systems such as Jira, GitHub, calendars, or file storage.
-
-**Related:** US-001, US-002, US-003, US-004, US-005, US-006, US-007, US-008, US-009, US-010, US-011, US-012
-
-### TECH-STACK-001 · approved · source: requirements:tech-stack
-
-Product owner approved an exact technology stack: FastAPI 0.115 backend, AWS cloud, PostgreSQL 16 database, React 19 frontend. Instruction is to design against exactly these, no substitutions.
-
-Backend: FastAPI 0.115 -- chosen for straightforward project/task storage, flat 'everyone can edit everything' access with a basic admin tier, and one-way webhook/email fan-out, plus automatic API docs. Cloud: AWS -- managed PostgreSQL, S3 for task file attachments, and app hosting in one vendor; scales down for 25 users and up as the company grows. Database: PostgreSQL 16 -- models relational data (projects, tasks, owners, due dates, comments, checklists, labels, timeline dependencies) and activity history; comfortably sized for a few dozen projects / 25 users. Frontend: React 19 -- supports three interchangeable views (Kanban, list, Gantt/timeline) with drag-and-drop, inline comments, checklists, live updates, single codebase for desktop/mobile browsers (responsive web only, no native apps).
+- Backend: FastAPI 0.115 -- chosen for straightforward storage of projects/tasks, flat 'everyone can edit everything' rule with a basic admin tier, one-way webhook/email fan-out, and automatic API docs.
+- Cloud: AWS -- single vendor providing managed PostgreSQL, S3 for attachments, and app hosting; sized for 25 users, scales as company grows.
+- Database: PostgreSQL 16 -- chosen because projects/tasks/owners/due dates/comments/checklists/labels and 'timeline dependencies between tasks' are highly relational, and to reliably model 'activity history'.
+- Frontend: React 19 -- chosen because the product's value is three interchangeable views (Kanban, list, Gantt/timeline with dependencies) plus drag-and-drop, inline comments, checklists, live updates, and one responsive-web codebase.
+Design instruction: build against exactly these versions, do not substitute.
 
 **Related:** US-001, US-004, US-006, US-008, US-009
 
-- ⚠ Conflict: this stack's rationale describes S3 for 'task file attachments' and PostgreSQL modeling 'timeline dependencies between tasks' and 'activity history', but the requirements explicitly scope file attachments, Gantt/timeline dependencies, and activity history OUT of this MVP (see EPIC-003 and EPIC-005 assumptions). Needs reconciliation: either the tech rationale is written for the broader future vision rather than this MVP, or scope is understated.
-- ⚠ Backend rationale states it 'fans updates out to Slack and email', but no user story in this requirements set describes task/project update notifications to Slack or email (only US-002 admin-invite email is covered). Gap: notification-trigger requirements are undocumented.
+- ⚠ Conflict: the React 19 rationale cites a 'Gantt/timeline with dependencies' view as part of the product's core value, but EPIC-004's stated assumption explicitly excludes the timeline/Gantt view with dependencies and milestones from this MVP scope. Needs product-owner clarification on which is authoritative.
+- ⚠ Conflict: the PostgreSQL rationale cites modeling 'activity history reliably' as a driver, but EPIC-003's assumption explicitly defers activity history to a later version. Flagging discrepancy rather than resolving it.
+- ⚠ Conflict: the AWS/S3 rationale states 'Tasks support file attachments' and justifies S3 for 'task file attachments', but EPIC-003's assumption explicitly excludes file attachments from this MVP scope. Needs clarification on whether attachments are in or out for this release.
 
-### SERVICES-001 · approved · source: requirements:services
+### REQ-SERVICES-001 · approved · source: requirements:runtime_services
 
-Product owner approved four runtime services: Amazon S3 for file storage, SendGrid for email, Redis as a background queue, and Slack via incoming webhook for chat updates.
+Product owner approved four runtime services: Amazon S3 (file storage), SendGrid (email), Redis (queue), and Slack (chat webhook), each with named required env vars.
 
-File storage: Amazon S3 (saas; env AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET) -- for task file attachments, kept out of the database. Email: SendGrid (saas; env SENDGRID_API_KEY) -- sends email notifications and admin invites. Queue: Redis (container redis:7-alpine, used as a queue) -- backgrounds Slack/email side-effects so saving a task isn't blocked, with retry if Slack/email is briefly down. Chat: Slack (custom; env SLACK_WEBHOOK_URL) -- pushes updates to the team's Slack channel via incoming webhook. Full required API key/env list: AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SECRET_ACCESS_KEY, REDIS_URL, S3_BUCKET, SENDGRID_API_KEY, SLACK_WEBHOOK_URL.
+- Amazon S3 (saas): env AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET -- for task file attachments, kept out of the database.
+- SendGrid (saas): env SENDGRID_API_KEY -- sends email notifications and admin invites (ties to US-002 invite flow).
+- Redis (container redis:7-alpine, used as a queue): no dedicated env var named beyond REDIS_URL (listed separately in API keys) -- queues outbound Slack/email side-effects so they don't block task saves, with retry on outage.
+- Slack (custom): env SLACK_WEBHOOK_URL -- pushes updates to a team channel via incoming webhook.
+Full required API key/env list: AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SECRET_ACCESS_KEY, REDIS_URL, S3_BUCKET, SENDGRID_API_KEY, SLACK_WEBHOOK_URL.
 
-**Related:** US-002, US-010
+**Related:** US-001, US-002, US-010
 
-- ⚠ Conflict: S3 file storage is justified by 'task file attachments', which the requirements (EPIC-003, EPIC-005) explicitly defer out of this MVP scope. No in-scope user story currently requires file upload/storage.
-- ⚠ No user story describes what triggers a Slack message or an email notification (beyond the admin invite email in US-002) -- the 'fan out updates' behavior implied by this service and the backend rationale is undocumented at the requirement level.
-- ⚠ 'Admin tier' for invite-only privilege is referenced in tech rationale but no requirement defines whether admins have any other special capability beyond inviting (see US-003 gap).
+- ⚠ No user story or acceptance criterion specifies which events trigger a Slack message or an email notification (e.g. task created, status changed, comment posted, assignment changed). The services section describes the integration exists but not its triggering rules -- needs a requirement or AC before design/build.
+- ⚠ S3 file-attachment service is approved for runtime, but as noted under REQ-TECH-001, EPIC-003 explicitly places file attachments out of MVP scope -- open conflict on whether this service is actually needed for this release.
+
+### REQ-SCOPE-001 · draft · source: requirements:scope
+
+Delivery scope is 'lightweight', requirements are at version 3. In-scope capabilities and explicit out-of-scope exclusions are listed to bound the MVP.
+
+In scope: team member sign-in, projects to organize work, tasks with owner/due date/status, Kanban board view, task list view, task comments, checklists/subtasks, labels, projects overview dashboard, email+password sign-in (no SSO in v1).
+Out of scope -- explicitly not to be designed or built: native iOS/Android mobile apps; two-way sync with external systems (Jira, GitHub, calendars, file storage).
+Sizing assumption: single small team, up to ~25 users, a few dozen active projects at a time.
+Regulatory assumption: single region, no special regulatory or data-residency requirements for general-industry internal tooling (no industry/compliance skill named in this input).
+
+- ⚠ No industry or domain-specific compliance skill was named for this project, so no regulatory traceability was applicable beyond the general single-region/no-special-requirements assumption stated in the input.
 
 ### EPIC-001 · draft · source: requirements:EPIC-001
 
-Authentication and Team Membership: internal team members sign in; an administrator invites new members by email. Access is flat -- every signed-in member can see and edit all projects/tasks, with the admin distinguished only by invite capability.
+Authentication is email/password only (no SSO in v1); admins invite members by email. Access is flat -- every signed-in member can see and edit all projects/tasks, with admin distinguished only by invite capability.
 
-Assumption surfaced during requirements gathering: authentication is email/password with admin-invites by email; no SSO/SAML in v1. Company operates in a single region with no special regulatory/data-residency requirements for general-industry internal tooling. Covers US-001 (sign in), US-002 (admin invites), US-003 (flat/equal access), and US-013 (monochrome theme for sign-in/invite screens).
+- US-001 (critical): sign in with email/password; correct credentials authenticate to projects overview (AC-001); wrong credentials show an invalid-credentials error (AC-002); unauthenticated direct access to project/task pages redirects to sign-in (AC-003).
+- US-002 (high): admin invites a colleague by email, recording an invitation the invitee uses to set a password (AC-004); invite function is hidden from non-admins (AC-005); duplicate invite to an existing member's email is blocked with a message (AC-006).
+- US-003 (high): any signed-in member sees every project regardless of creator (AC-007) and can edit any project/task they didn't create, since there is no per-project privacy or roles beyond admin (AC-008).
+- US-013 (low): sign-in and invite screens restyled to a black/white/greyscale-only theme; error states must be distinguishable by contrast/typography, not color (AC-031, AC-032).
+- US-018 (low): removes the descriptive paragraph about email/password and equal access from the sign-in form, with no layout or functional regression (AC-042, AC-043, AC-044).
 
-**Related:** US-001, US-002, US-003, US-013
+**Related:** US-001, US-002, US-003, US-013, US-018
 
-- ⚠ No regulated industry or compliance domain was named for this project, so no regulatory traceability obligations apply per the stated assumption -- confirm this remains true before architecture/design.
+- ⚠ No story covers password reset / forgot-password flow, account lockout, or session expiry -- not addressed anywhere in this requirement set.
+- ⚠ Assumption stated but not independently confirmed: single-region operation with no special regulatory/data-residency requirements (carried from EPIC-001 context, not a specific AC).
 
 ### EPIC-002 · draft · source: requirements:EPIC-002
 
-Projects: work is organized into projects containing tasks; a projects overview dashboard gives an at-a-glance view of the few dozen active projects for the ~25-person team.
+Projects organize tasks; any member can create/edit a project, and a dashboard gives an at-a-glance overview of all active projects with progress summaries.
 
-Covers US-004 (create/manage project), US-005 (projects overview dashboard), and US-014 (monochrome theme for dashboard and project create/edit screens). System is explicitly sized for up to ~25 users and a few dozen active projects.
+- US-004 (critical): creating a project requires a name, saved and visible to the whole team (AC-009); missing name blocks creation with a prompt (AC-010); editing name/description updates are shown to all members (AC-011).
+- US-005 (high): dashboard lists each project with name and task progress summary, e.g. counts complete/total (AC-012); selecting a project navigates to its tasks (AC-013); empty state invites creating the first project when none exist (AC-014).
+- US-014 (low): dashboard and project create/edit screens restyled to black/white/greyscale theme, including cards, progress indicators, empty state, form fields and validation messages (AC-033, AC-034).
 
 **Related:** US-004, US-005, US-014
 
+- ⚠ No explicit limit or archiving/deletion behavior for projects is described -- only creation and editing are covered.
+
 ### EPIC-003 · draft · source: requirements:EPIC-003
 
-Tasks: each project contains tasks with an owner, due date, and status that moves through a workflow -- the shared unit of work the team collaborates on.
+Tasks carry an owner, due date, and status as their core attributes in this MVP. Dependencies, milestones, timeline/Gantt, attachments and activity history are explicitly deferred to a later version per the stated assumption.
 
-Assumption surfaced during requirements gathering: at Lightweight MVP scope, a task's core attributes are owner, due date, and status only. Timeline/Gantt views, task dependencies, milestones, file attachments, and activity history discussed in the broader product vision are explicitly deferred to a later version. Covers US-006 (create task), US-007 (update task status/details), and US-015 (monochrome theme for task create/edit screens).
+- US-006 (critical): creating a task needs a title to be added to a project and appear in its views (AC-015); owner, due date and status can be set together and are saved/shown (AC-016); missing title blocks creation with a prompt (AC-017).
+- US-007 (high): status changes persist and show consistently across views (AC-018); reassigning owner or changing due date is saved and visible to all members (AC-019).
+- US-015 (low): task create/edit screens restyled to black/white/greyscale theme for owner/due-date/status controls, keeping validation messages legible (AC-035, AC-036).
+Stated assumption: at MVP scope the task's core attributes are owner, due date, status only; Gantt/timeline, dependencies, milestones, file attachments, and activity history are deferred.
 
 **Related:** US-006, US-007, US-015
 
-- ⚠ Deferred-to-later items (timeline/Gantt, dependencies, milestones, file attachments, activity history) are explicitly out of this MVP -- see conflict noted in TECH-STACK-001/SERVICES-001 regarding S3 attachments and PostgreSQL dependency/activity-history rationale being written against the broader (not MVP) scope.
+- ⚠ The set of valid task statuses (e.g. names, order, count of workflow stages) is never enumerated in any US or AC -- needed before board columns/list values can be built.
+- ⚠ As flagged under REQ-TECH-001, this epic's deferral of file attachments and activity history conflicts with the AWS/PostgreSQL rationale that assumes these features exist -- unresolved discrepancy.
 
 ### EPIC-004 · draft · source: requirements:EPIC-004
 
-Task Views: the same tasks can be viewed interchangeably as a Kanban board or a task list; changes in one view reflect in the other because both operate over the same underlying tasks.
+Tasks are viewable interchangeably as a Kanban board (grouped by status, drag-and-drop) and as a list (tabular, showing owner/due date/status), both reflecting the same underlying data. A Gantt/timeline view is explicitly out of MVP scope.
 
-Assumption surfaced during requirements gathering: the timeline/Gantt view with dependencies and milestones from the broader vision is beyond this Lightweight MVP and not included. Covers US-008 (Kanban board), US-009 (task list), US-016 (monochrome theme + status distinction for Kanban), and US-017 (visual regression/accessibility QA check across all delivered screens).
+- US-008 (critical): Kanban board groups task cards into columns matching status (AC-020); dragging a card to another column updates and persists its status (AC-021).
+- US-009 (high): list view shows title, owner, due date, status per row (AC-022); edits made in list view reflect on the board because both share the same tasks (AC-023).
+- US-016 (medium): Kanban restyled to black/white/greyscale while columns/cards must remain distinguishable via shading, borders or labels (not color) (AC-037, AC-038); status changes after a drag still persist and show visually under the new theme (AC-039).
+- US-017 (medium, QA): visual regression and accessibility check across all delivered screens (sign-in, invite, dashboard, project, task create/edit, Kanban) at desktop and mobile widths for contrast/readability/layout (AC-040), and a full functional regression pass of sign-in, create project, create task, drag-a-card flows (AC-041).
+Stated assumption: timeline/Gantt view with dependencies and milestones is beyond this MVP scope.
 
 **Related:** US-008, US-009, US-016, US-017
 
+- ⚠ As flagged under REQ-TECH-001, the React 19 stack rationale cites the Gantt/timeline view as a core driver while this epic explicitly excludes it from MVP -- unresolved discrepancy to confirm with product owner.
+- ⚠ US-017 describes QA verification intent but no test results or execution records exist yet in the input; this entry documents only the requirement/AC, not actual test outcomes.
+
 ### EPIC-005 · draft · source: requirements:EPIC-005
 
-Task Collaboration: team members collaborate in context on individual tasks through comments, checklists/subtasks, and labels.
+Team members collaborate on individual tasks via comments, checklists/subtasks, and labels. Noted as assumed standard features rather than explicitly confirmed by the product owner; file attachments and full activity history are out of MVP scope.
 
-Assumption surfaced during requirements gathering: comments, checklists/subtasks, and labels are assumed standard collaboration features rather than explicitly confirmed by the product owner. File attachments and a full activity history, also mentioned in the broader vision, are beyond Lightweight MVP scope and not included in this version. Covers US-010 (comments), US-011 (checklists/subtasks), US-012 (labels).
+- US-010 (high): posting a comment saves it with author name and timestamp, visible to all viewers (AC-024); existing comments show in chronological order (AC-025); empty comment submission is blocked with a prompt (AC-026).
+- US-011 (medium): adding a checklist item/subtask appears incomplete by default (AC-027); marking an item complete saves state and the task shows a done/total count (AC-028).
+- US-012 (medium): adding one or more labels to a task saves and displays them in both board and list views (AC-029); removing a label removes it from display (AC-030).
+Stated assumption: comments, checklists/subtasks, and labels are assumed standard collaboration features rather than explicitly confirmed by the product owner.
 
 **Related:** US-010, US-011, US-012
 
-- ⚠ Comments/checklists/labels are flagged as assumed rather than explicitly confirmed -- recommend product-owner sign-off before architecture locks these in.
-- ⚠ File attachments and activity history are deferred here, reinforcing the conflict with the approved tech stack/services rationale (S3 for attachments, PostgreSQL for activity history) documented in TECH-STACK-001/SERVICES-001.
-
-### US-001 · draft · source: requirements:US-001
-
-Team members sign in with email and password to securely access the team's projects and tasks. Critical priority.
-
-AC-001: correct email+password on sign-in submit authenticates the user and routes to the projects overview. AC-002: non-matching email/password shows an 'invalid credentials' error, no sign-in. AC-003: unauthenticated direct access to any project/task page redirects to sign-in.
-
-**Related:** EPIC-001
-
-### US-002 · draft · source: requirements:US-002
-
-An administrator invites new team members by email so colleagues can join and collaborate. High priority.
-
-AC-004: admin enters a colleague's email and sends an invite; invitation is recorded, invitee can set a password to create an account. AC-005: non-admin signed-in members do not see the invite-member function. AC-006: inviting an email that already belongs to an existing member is prevented, admin is informed of the duplicate.
-
-**Related:** EPIC-001, US-001
-
-### US-003 · draft · source: requirements:US-003
-
-Every signed-in team member can see and edit every project and task -- access is flat and equal with no per-project privacy or roles beyond basic admin functions. High priority.
-
-AC-007: any signed-in member sees every project in the workspace regardless of creator, on the projects overview. AC-008: any signed-in member can edit a task/project they did not create, and the change saves, because access is flat with no per-project restrictions beyond basic admin functions.
-
-**Related:** EPIC-001, US-001, US-002
-
-- ⚠ Admin's distinguishing power is stated only as 'invite new members' (US-002); no other admin-only capability is defined anywhere in this input -- confirm whether admin has any other function before architecture defines roles/permissions.
-
-### US-004 · draft · source: requirements:US-004
-
-A team member creates a project and edits its details to organize related tasks under one project. Critical priority.
-
-AC-009: creating a project with a name saves it and it appears in the projects overview for the whole team. AC-010: submitting without a name blocks creation and prompts for a name. AC-011: editing name/description saves the update and shows it to all team members.
-
-**Related:** EPIC-002
-
-### US-005 · draft · source: requirements:US-005
-
-A dashboard lists all projects with key status so the team can quickly see what's active and navigate in. High priority.
-
-AC-012: dashboard shows each project with a summary (name, task progress e.g. count complete/total). AC-013: selecting a project navigates to that project's tasks. AC-014: with zero projects, an empty state invites the user to create the first project.
-
-**Related:** EPIC-002, US-004
-
-### US-006 · draft · source: requirements:US-006
-
-A team member creates a task within a project and assigns an owner, due date, and status so responsibility and timing are clear. Critical priority.
-
-AC-015: creating a task with a title adds it to the project and it appears in its task views. AC-016: assigning owner, due date, and status on create/edit saves and displays all three on the task. AC-017: submitting without a title blocks creation and prompts for a title.
-
-**Related:** EPIC-003
-
-### US-007 · draft · source: requirements:US-007
-
-A team member changes a task's status, owner, or due date as work progresses so the task reflects current state. High priority.
-
-AC-018: changing status to another valid status saves it and reflects consistently across all views. AC-019: reassigning owner or changing due date saves and is visible to all team members.
-
-**Related:** EPIC-003, US-006
-
-### US-008 · draft · source: requirements:US-008
-
-A team member views a project's tasks as a Kanban board grouped by status, managing workflow by dragging cards between columns. Critical priority.
-
-AC-020: tasks appear as cards in the column matching their status. AC-021: moving a card to a different status column updates and persists the task's status.
-
-**Related:** EPIC-004, US-006, US-007
-
-### US-009 · draft · source: requirements:US-009
-
-A team member views a project's tasks as a list showing owner, due date, and status to scan/manage tasks in compact tabular form. High priority.
-
-AC-022: list view shows each task in a row with title, owner, due date, status. AC-023: updating a task in list view reflects on the Kanban board because both views share the same underlying tasks.
-
-**Related:** EPIC-004, US-008
-
-### US-010 · draft · source: requirements:US-010
-
-A team member posts comments on a task so the team can discuss the work in context. High priority.
-
-AC-024: posting a comment saves it and shows it with author name and timestamp to all viewers. AC-025: existing comments display in chronological order. AC-026: submitting an empty comment is blocked and prompts for text.
-
-**Related:** EPIC-005
-
-### US-011 · draft · source: requirements:US-011
-
-A team member adds checklist items or subtasks to a task and marks them done to break work into smaller steps and track progress. Medium priority.
-
-AC-027: adding a checklist item/subtask shows it in an incomplete state. AC-028: marking an item complete saves the state and the task shows completed-count out of total.
-
-**Related:** EPIC-005
-
-### US-012 · draft · source: requirements:US-012
-
-A team member applies labels to tasks to categorize and visually distinguish them. Medium priority.
-
-AC-029: adding one or more labels saves them and displays them on the task in both board and list views. AC-030: removing a label removes it from display.
-
-**Related:** EPIC-005
-
-### US-013 · draft · source: requirements:US-013
-
-The sign-in and invite screens are restyled to a black-and-white/greyscale theme for visual consistency with the new look. Low priority.
-
-AC-031: sign-in page backgrounds, text, buttons, and error states use only black/white/greyscale tones, replacing the previous color palette. AC-032: the invalid-credentials error remains clearly distinguishable via contrast and typography alone, not color.
-
-**Related:** EPIC-001, US-001, US-002
-
-### US-014 · draft · source: requirements:US-014
-
-The projects overview dashboard and project create/edit screens are restyled to the monochrome theme. Low priority.
-
-AC-033: project cards, progress indicators, and empty state use only black/white/greyscale tones. AC-034: project create/edit form fields, buttons, and validation messages use the new monochrome palette.
-
-**Related:** EPIC-002, US-004, US-005
-
-### US-015 · draft · source: requirements:US-015
-
-The task create and edit screens are restyled to the monochrome theme. Low priority.
-
-AC-035: owner, due date, and status controls on task create/edit forms use only black/white/greyscale tones. AC-036: required-field validation messages remain clearly legible against the new monochrome background.
-
-**Related:** EPIC-003, US-006, US-007
-
-### US-016 · draft · source: requirements:US-016
-
-The Kanban board is restyled to the monochrome theme while remaining able to distinguish status columns/cards apart without color. Medium priority.
-
-AC-037: each column and card uses only black/white/greyscale tones. AC-038: two differently-statused columns remain distinguishable via shading, borders, or labels -- not color alone. AC-039: moving a card to a new status column visually reflects the new status in monochrome and the status change still persists as before.
-
-**Related:** EPIC-004, US-008
-
-### US-017 · draft · source: requirements:US-017
-
-A QA engineer verifies the black-and-white theme across all delivered screens on desktop and mobile widths, confirming no contrast, readability, layout, or functional regressions. Medium priority.
-
-AC-040: every delivered screen (sign-in, invite, dashboard, project, task create/edit, Kanban board) rendered in the monochrome theme at desktop and mobile widths meets readable contrast for text/interactive elements with no layout regressions. AC-041: core functional flows (sign-in, create project, create task, drag a card) all work exactly as before the theme change, confirming no functional regression.
-
-**Related:** EPIC-001, EPIC-002, EPIC-003, EPIC-004, US-013, US-014, US-015, US-016
-
-- ⚠ This is a verification/testing-oriented story defined at requirements time; actual execution and results belong to the testing phase, which has not started -- no test results exist yet to confirm AC-040/AC-041.
+- ⚠ Comments, checklists, and labels are flagged in the input itself as assumed rather than explicitly confirmed by the product owner -- recommend confirming before/at design handoff.
+- ⚠ No AC specifies comment editing or deletion, checklist item deletion/reordering, or label creation/management (e.g. who defines the label set, color/text, max count) -- left unspecified.
 <!-- sdlc:auto:end narrative -->
 
 <!-- sdlc:auto:start summary -->
-**Requirements version:** v2  
+**Requirements version:** v3  
 **Delivery scope:** lightweight  
-**Approved:** 2026-10-27
+**Approved:** 2026-11-06
 
 **Capabilities in scope:** Team member sign-in, Projects to organize work, Tasks with owners, due dates, and statuses, Kanban board view of tasks, Task list view, Task comments, Checklists / subtasks on tasks, Labels on tasks, Projects overview dashboard, Email and password sign-in (no SSO in the first version)
 
@@ -293,6 +187,18 @@ Assumption (surfaced from the confirmed understanding): authentication is email/
 |---|---|---|---|
 | AC-031 | the sign-in page is open | the page renders | all backgrounds, text, buttons and error states use only black, white and greyscale tones instead of the previous color palette |
 | AC-032 | the invalid-credentials error is shown | the page renders the error | the error is clearly distinguishable using contrast and typography alone, not color |
+
+### US-018: Remove descriptive paragraph from sign-in form
+
+**Priority:** low
+
+> As a team member, I want the sign-in screen to no longer show the explanatory paragraph about email/password and equal access, so that the sign-in form is cleaner and free of redundant descriptive copy.
+
+| ID | Given | When | Then |
+|---|---|---|---|
+| AC-042 | the sign-in page is open | the page renders | the paragraph containing 'Email and password. Every signed-in member sees and edits every project in the workspace.' is no longer displayed |
+| AC-043 | the sign-in page is open | the paragraph is removed | the sign-in form layout (email field, password field, submit button, error state) remains correctly spaced and functional with no visual regression |
+| AC-044 | a user enters valid or invalid credentials | they submit the sign-in form after the paragraph is removed | sign-in success and error behaviours work exactly as before, confirming no functional regression |
 
 ## EPIC-002: Projects
 

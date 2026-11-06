@@ -50,7 +50,7 @@ Capacity: 20 points · Committed: 20
 
 Complete the monochrome theme rollout across remaining screens and verify with visual regression and accessibility QA.
 
-Capacity: 20 points · Committed: 10
+Capacity: 20 points · Committed: 11
 
 | Key | Type | Title | Points | Role | Depends on |
 |---|---|---|---|---|---|
@@ -58,6 +58,7 @@ Capacity: 20 points · Committed: 10
 | US-015 | Story | Monochrome theme for task creation and editing screens | 2 | frontend-agent | US-006, US-007 |
 | US-016 | Story | Monochrome theme and status distinction for the Kanban board | 3 | frontend-agent | US-008 |
 | US-017 | Story | Visual regression and accessibility check for the new monochrome theme | 2 | qa-agent | US-013, US-014, US-015, US-016 |
+| US-018 | Story | Remove descriptive paragraph from sign-in form | 1 | frontend-agent | — |
 
 ## Unscheduled
 
