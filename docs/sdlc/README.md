@@ -5,7 +5,7 @@
 <!-- sdlc:auto:start overview -->
 project management system
 
-**Documentation version:** v11
+**Documentation version:** v12
 <!-- sdlc:auto:end overview -->
 
 ## Contents
@@ -14,24 +14,25 @@ project management system
 | Document | State |
 |---|---|
 | [Requirements](requirements/README.md) | v3 approved |
-| [Architecture](architecture/README.md) | 7 entries |
-| [Development](development/README.md) | 6 entries |
-| [Testing](testing/README.md) | 1 entry |
-| [Deployment](deployment/README.md) | 1 entry |
-| [Maintenance](maintenance/README.md) | 1 entry |
+| [Architecture](architecture/README.md) | 17 entries |
+| [Planning](planning/README.md) | 9 entries |
+| [Development](development/README.md) | 5 entries |
+| [Testing](testing/README.md) | 2 entries |
+| [Deployment](deployment/README.md) | 0 entries |
+| [Maintenance](maintenance/README.md) | 0 entries |
 | [Data model](architecture/data-model.md) | generated |
 | [API (OpenAPI)](architecture/api/openapi.yaml) | generated |
 | [Decisions (ADRs)](architecture/adr/README.md) | 4 decisions |
 | [Sprint plan](development/sprint-plan.md) | 4 sprints |
 | [Developer guide](development/developer-guide.md) | generated |
 | [API reference](development/api-reference.md) | 21 routes |
-| [Test report](testing/test-report.md) | not run yet |
-| [Tests](testing/test-cases.md) | 128 tests |
+| [Test report](testing/test-report.md) | failed |
+| [Tests](testing/test-cases.md) | 164 tests |
 | [Deployment guide](deployment/deployment-guide.md) | not deployed yet |
 | [Runbook](deployment/runbook.md) | not deployed yet |
 | [Release notes](deployment/release-notes.md) | 0 releases |
 | [Traceability matrix](traceability-matrix.md) | 18 requirements |
-| [Changelog](CHANGELOG.md) | 11 versions |
+| [Changelog](CHANGELOG.md) | 12 versions |
 <!-- sdlc:auto:end contents -->
 
 ## Open gaps

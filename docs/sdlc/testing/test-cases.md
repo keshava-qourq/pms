@@ -3,7 +3,7 @@
 > Maintained by QuorQ AI SDLC. Text between `sdlc:auto` markers is regenerated; anything outside them is yours and is kept.
 
 <!-- sdlc:auto:start summary -->
-128 tests · Passed 104 · Failed 0 · Skipped 3 · Not run 21
+164 tests · Passed 141 · Failed 5 · Skipped 18 · Not run 0
 
 Acceptance criteria covered: 30/44 · passing: 11/44
 <!-- sdlc:auto:end summary -->
@@ -46,10 +46,10 @@ Acceptance criteria covered: 30/44 · passing: 11/44
 | — | test_nfr001_login_route_needs_no_token | Integration | Passed | `backend/tests/integration/test_auth.py` |
 | — | test_nfr001_protected_route_accepts_a_valid_token | Integration | Passed | `backend/tests/integration/test_auth.py` |
 | — | test_nfr001_protected_route_requires_a_valid_token | Integration | Passed | `backend/tests/integration/test_auth.py` |
-| AC-001 | [AC-001] a seeded member signs in and lands on the projects overview | E2E | Not run yet | `frontend/e2e/auth.spec.ts` |
-| AC-002 | [AC-002] wrong credentials show the invalid-credentials error and the user stays on /sign-in | E2E | Not run yet | `frontend/e2e/auth.spec.ts` |
-| AC-003 | [AC-003] navigating directly to /projects while signed out redirects to /sign-in | E2E | Not run yet | `frontend/e2e/auth.spec.ts` |
-| AC-003 | [AC-003] navigating directly to /task while signed out redirects to /sign-in | E2E | Not run yet | `frontend/e2e/auth.spec.ts` |
+| AC-001 | [AC-001] a seeded member signs in and lands on the projects overview | E2E | Failed | `frontend/e2e/auth.spec.ts` |
+| AC-002 | [AC-002] wrong credentials show the invalid-credentials error and the user stays on /sign-in | E2E | Skipped | `frontend/e2e/auth.spec.ts` |
+| AC-003 | [AC-003] navigating directly to /projects while signed out redirects to /sign-in | E2E | Skipped | `frontend/e2e/auth.spec.ts` |
+| AC-003 | [AC-003] navigating directly to /task while signed out redirects to /sign-in | E2E | Skipped | `frontend/e2e/auth.spec.ts` |
 
 ### US-002: Admin invites team members by email
 
@@ -75,9 +75,9 @@ Acceptance criteria covered: 30/44 · passing: 11/44
 | AC-004 | test_ac004_admin_creates_invitation_and_gets_201 | Integration | Passed | `backend/tests/integration/test_invitations.py` |
 | AC-005 | test_ac005_non_admin_is_forbidden_and_creates_nothing | Integration | Passed | `backend/tests/integration/test_invitations.py` |
 | AC-006 | test_ac006_inviting_an_existing_member_returns_409_and_creates_no_invitation | Integration | Passed | `backend/tests/integration/test_invitations.py` |
-| AC-004 | [AC-004] an admin sends an invite and sees it recorded | E2E | Not run yet | `frontend/e2e/invitations.spec.ts` |
-| AC-004 | [AC-004] the invitee opens the invite link, sets a password and reaches the projects overview | E2E | Not run yet | `frontend/e2e/invitations.spec.ts` |
-| AC-005 | [AC-005] a non-admin member sees no invite control anywhere on the Team screen | E2E | Not run yet | `frontend/e2e/invitations.spec.ts` |
+| AC-004 | [AC-004] an admin sends an invite and sees it recorded | E2E | Failed | `frontend/e2e/invitations.spec.ts` |
+| AC-004 | [AC-004] the invitee opens the invite link, sets a password and reaches the projects overview | E2E | Skipped | `frontend/e2e/invitations.spec.ts` |
+| AC-005 | [AC-005] a non-admin member sees no invite control anywhere on the Team screen | E2E | Skipped | `frontend/e2e/invitations.spec.ts` |
 
 ### US-003: Equal access to all projects and tasks
 
@@ -91,26 +91,16 @@ Acceptance criteria covered: 30/44 · passing: 11/44
 | — | test_nfr003_a_few_dozen_projects_list_in_a_single_request_without_pagination_errors | Unit | Passed | `backend/tests/test_flat_access.py` |
 | AC-008 | Project screen > [AC-008] edits a project the signed-in member did not create: saving sends PATCH /projects/{id} and the change is reflected after cache invalidation | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
 | AC-008 | Project screen > [AC-008] edits a task from a project the signed-in member did not create: changing status sends PATCH /tasks/{id} and the change is reflected after cache invalidation | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
-| AC-020 | Project screen > [AC-020] renders one column per status with each task in the column matching its status, and no seeded task data | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
-| AC-020 | Project screen > [AC-020] shows an error state when the tasks request fails | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
-| AC-021 | Project screen > [AC-021] dragging a card to another column calls PATCH /tasks/{id} with the new status, moves the card, and survives a reload | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
-| AC-022 | Project screen > [AC-022] the list view renders one row per task with title, owner name, due date and status | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
-| AC-023 | Project screen > [AC-023] updating a task's status in the list view invalidates the shared tasks query so the board reflects it without a reload | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
 | — | Project screen > does not hide or disable editing based on who created the project or task | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
-| — | Project screen > renders label chips from the API labels[] field on both the board card and the list row | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
 | — | Project screen > shows a loading state, then loads GET /projects/{id} and GET /projects/{id}/tasks and renders the tasks | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
 | — | Project screen > shows an empty-board state when the project has no tasks | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
-| — | Project screen > shows an empty-list state in the list view when the project has no tasks | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
 | AC-007 | Projects screen > [AC-007] shows a loading state, then every project from GET /projects for any signed-in member; no seeded sample data | Unit | Passed | `frontend/src/screens/Projects.test.tsx` |
 | — | Projects screen > does not hide or disable a project based on who created it, and records the selected project before navigating | Unit | Passed | `frontend/src/screens/Projects.test.tsx` |
 | — | Projects screen > posts to POST /projects on create and refreshes the list from the server cache | Unit | Passed | `frontend/src/screens/Projects.test.tsx` |
 | — | Projects screen > shows an empty state when GET /projects returns none | Unit | Passed | `frontend/src/screens/Projects.test.tsx` |
-| AC-007 | [AC-007] a signed-in member sees a project created by another member in the overview | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
-| AC-008 | [AC-008] a member opens a project they did not create, edits a task, and the change is visible after reload | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
-| AC-010 | [AC-010] submitting the new-project form with a blank name shows an inline prompt and creates nothing | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
-| AC-012, AC-013 | [AC-012][AC-013] the dashboard lists a project's name and task progress, and selecting it opens its tasks | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
-| AC-014 | [AC-014] with no projects in the workspace, the empty state invites creating the first project | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
-| — | [NFR-006] the projects overview renders usably at a 375px mobile viewport | E2E | Not run yet | `frontend/e2e/projects.spec.ts` |
+| AC-007 | [AC-007] a signed-in member sees a project created by another member in the overview | E2E | Failed | `frontend/e2e/projects.spec.ts` |
+| AC-008 | [AC-008] a member opens a project they did not create, edits a task, and the change is visible after reload | E2E | Skipped | `frontend/e2e/projects.spec.ts` |
+| — | [NFR-006] the projects overview renders usably at a 375px mobile viewport | E2E | Skipped | `frontend/e2e/projects.spec.ts` |
 
 ## Sprint 2
 
@@ -118,7 +108,7 @@ Acceptance criteria covered: 30/44 · passing: 11/44
 
 | Criteria | Test | Level | Result | File |
 |---|---|---|---|---|
-| AC-032 | [AC-032] the invalid-credentials error is distinguishable from the idle state without colour, and stays achromatic | E2E | Not run yet | `frontend/e2e/monochrome.spec.ts` |
+| AC-032 | [AC-032] the invalid-credentials error is distinguishable from the idle state without colour, and stays achromatic | E2E | Skipped | `frontend/e2e/monochrome.spec.ts` |
 
 ### US-004: Create and manage a project
 
@@ -131,6 +121,9 @@ Acceptance criteria covered: 30/44 · passing: 11/44
 | AC-011 | test_ac011_patch_name_and_description_persist_and_visible_to_another_member | Integration | Passed | `backend/tests/integration/test_projects.py` |
 | — | test_nfr003_a_few_dozen_projects_list_in_a_single_get_request | Integration | Passed | `backend/tests/integration/test_projects.py` |
 | — | test_post_project_returns_201_and_appears_in_get_for_another_member | Integration | Passed | `backend/tests/integration/test_projects.py` |
+| AC-010 | [AC-010] submitting the new-project form with a blank name shows an inline prompt and creates nothing | E2E | Skipped | `frontend/e2e/projects.spec.ts` |
+| AC-012, AC-013 | [AC-012][AC-013] the dashboard lists a project's name and task progress, and selecting it opens its tasks | E2E | Skipped | `frontend/e2e/projects.spec.ts` |
+| AC-014 | [AC-014] with no projects in the workspace, the empty state invites creating the first project | E2E | Skipped | `frontend/e2e/projects.spec.ts` |
 
 ### US-006: Create a task with owner, due date, and status
 
@@ -141,13 +134,6 @@ Acceptance criteria covered: 30/44 · passing: 11/44
 | — | test_nfr005_job_retries_with_backoff_on_an_outbound_failure | Unit | Skipped | `backend/tests/test_task_notifications.py` |
 | AC-017 | Task screen > [AC-017] blocks saving a blank title with an inline message and sends no request | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
 | AC-018, AC-019 | Task screen > [AC-018/AC-019] changing status, owner and due date sends one PATCH /tasks/{id} with the new values, reflected after cache invalidation | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
-| AC-024 | Task screen > [AC-024] posting a comment calls POST /tasks/{id}/comments and the saved comment appears with author and timestamp | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
-| AC-025 | Task screen > [AC-025] renders existing comments in chronological order from GET /tasks/{id}/comments | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
-| AC-026 | Task screen > [AC-026] submitting an empty or whitespace-only comment posts nothing and shows an inline prompt | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
-| AC-027 | Task screen > [AC-027] adding a checklist item calls POST /tasks/{id}/checklist and it appears unchecked | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
-| AC-028 | Task screen > [AC-028] ticking an item calls PATCH /checklist/{id} and the 'n of m done' count persists across reload | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
-| AC-029 | Task screen > [AC-029] adding a label from the GET /labels catalogue calls POST /tasks/{id}/labels and the chip renders | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
-| AC-030 | Task screen > [AC-030] removing a label calls DELETE /tasks/{id}/labels/{label_id} and the chip disappears | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
 | — | Task screen > removes seeded sample task, owner and status data | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
 | — | Task screen > shows a 'no task selected' empty state when nothing was opened | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
 | — | Task screen > shows a loading state, then loads GET /tasks/{id} and renders the task | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
@@ -161,8 +147,8 @@ Acceptance criteria covered: 30/44 · passing: 11/44
 | AC-018 | test_ac018_invalid_status_returns_422_and_leaves_task_unchanged | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
 | AC-018 | test_ac018_nfr007_patch_to_each_valid_status_persists_identically_in_detail_and_list | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
 | AC-019 | test_ac019_reassigning_owner_and_due_date_persists_and_is_visible_to_second_member | Integration | Passed | `backend/tests/integration/test_project_tasks.py` |
-| AC-015, AC-016 | [AC-015][AC-016] creating a task with owner, due date and status shows it on the board | E2E | Not run yet | `frontend/e2e/tasks.spec.ts` |
-| AC-018 | [AC-018][NFR-007] changing a task's status is reflected in both the board and the list view | E2E | Not run yet | `frontend/e2e/tasks.spec.ts` |
+| AC-015, AC-016 | [AC-015][AC-016] creating a task with owner, due date and status shows it on the board | E2E | Failed | `frontend/e2e/tasks.spec.ts` |
+| AC-018 | [AC-018][NFR-007] changing a task's status is reflected in both the board and the list view | E2E | Skipped | `frontend/e2e/tasks.spec.ts` |
 
 ## Sprint 3
 
@@ -170,10 +156,29 @@ Acceptance criteria covered: 30/44 · passing: 11/44
 
 | Criteria | Test | Level | Result | File |
 |---|---|---|---|---|
-| AC-020 | [AC-020] each seeded task renders as a card in the column matching its status | E2E | Not run yet | `frontend/e2e/kanban.spec.ts` |
-| AC-021 | [AC-021] dragging a card to another column moves it and the new status survives a reload | E2E | Not run yet | `frontend/e2e/kanban.spec.ts` |
-| AC-022 | [AC-022] list rows show title, owner, due date and status | E2E | Not run yet | `frontend/e2e/kanban.spec.ts` |
-| AC-023 | [AC-023] changing a task's status from the list view updates the board without a reload | E2E | Not run yet | `frontend/e2e/kanban.spec.ts` |
+| AC-020 | Project screen > [AC-020] renders one column per status with each task in the column matching its status, and no seeded task data | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| AC-020 | Project screen > [AC-020] shows an error state when the tasks request fails | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| AC-021 | Project screen > [AC-021] dragging a card to another column calls PATCH /tasks/{id} with the new status, moves the card, and survives a reload | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| AC-022 | Project screen > [AC-022] the list view renders one row per task with title, owner name, due date and status | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| AC-023 | Project screen > [AC-023] updating a task's status in the list view invalidates the shared tasks query so the board reflects it without a reload | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| — | Project screen > renders label chips from the API labels[] field on both the board card and the list row | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| — | Project screen > shows an empty-list state in the list view when the project has no tasks | Unit | Passed | `frontend/src/screens/Project.test.tsx` |
+| AC-020 | [AC-020] each seeded task renders as a card in the column matching its status | E2E | Failed | `frontend/e2e/kanban.spec.ts` |
+| AC-021 | [AC-021] dragging a card to another column moves it and the new status survives a reload | E2E | Skipped | `frontend/e2e/kanban.spec.ts` |
+| AC-022 | [AC-022] list rows show title, owner, due date and status | E2E | Skipped | `frontend/e2e/kanban.spec.ts` |
+| AC-023 | [AC-023] changing a task's status from the list view updates the board without a reload | E2E | Skipped | `frontend/e2e/kanban.spec.ts` |
+
+### US-010: Comment on a task
+
+| Criteria | Test | Level | Result | File |
+|---|---|---|---|---|
+| AC-024 | Task screen > [AC-024] posting a comment calls POST /tasks/{id}/comments and the saved comment appears with author and timestamp | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-025 | Task screen > [AC-025] renders existing comments in chronological order from GET /tasks/{id}/comments | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-026 | Task screen > [AC-026] submitting an empty or whitespace-only comment posts nothing and shows an inline prompt | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-027 | Task screen > [AC-027] adding a checklist item calls POST /tasks/{id}/checklist and it appears unchecked | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-028 | Task screen > [AC-028] ticking an item calls PATCH /checklist/{id} and the 'n of m done' count persists across reload | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-029 | Task screen > [AC-029] adding a label from the GET /labels catalogue calls POST /tasks/{id}/labels and the chip renders | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
+| AC-030 | Task screen > [AC-030] removing a label calls DELETE /tasks/{id}/labels/{label_id} and the chip disappears | Unit | Passed | `frontend/src/screens/Task.test.tsx` |
 
 ## Project setup
 
@@ -181,5 +186,41 @@ Acceptance criteria covered: 30/44 · passing: 11/44
 |---|---|---|---|---|
 | — | test_health_reports_ok | Unit | Passed | `backend/tests/test_health.py` |
 | — | test_the_openapi_document_builds | Unit | Passed | `backend/tests/test_health.py` |
-| — | the app loads | E2E | Not run yet | `frontend/e2e/example.spec.ts` |
+| — | Icons > defaults to a 16x16 box and lets a caller override the size | Unit | Passed | `frontend/src/lib/icons.test.tsx` |
+| — | Icons > exposes a renderable component for every name in ICON_NAMES | Unit | Passed | `frontend/src/lib/icons.test.tsx` |
+| — | Icons > includes the icon names the generated screens currently import | Unit | Passed | `frontend/src/lib/icons.test.tsx` |
+| — | Icons > is hidden from the accessibility tree since it carries no text alternative | Unit | Passed | `frontend/src/lib/icons.test.tsx` |
+| — | Icons > keeps ICON_NAMES in sync with the keys of Icons | Unit | Passed | `frontend/src/lib/icons.test.tsx` |
+| — | Icons > passes through extra props such as className to the svg element | Unit | Passed | `frontend/src/lib/icons.test.tsx` |
+| — | Avatar > collapses to a single initial for a one-word name | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Avatar > renders an image with alt text equal to the name when a src is given, instead of initials | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Avatar > renders no initials for an empty name instead of crashing | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Avatar > shows initials made of the first letter of the first two words of the name | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Badge > leaves background color to its stylesheet classes for a non-accent variant | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Badge > paints the brand accent color only for the accent variant | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Badge > renders its label text | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Button > does not fire onClick when disabled | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Button > falls back to the primary styling for an unknown variant or size instead of crashing | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Button > leaves background color unset for non-primary variants | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Button > lets a caller's own inline style win over the branded background | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Button > paints the brand primary color onto a primary button so a theme change repaints it | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Button > renders its children and fires onClick when clicked | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Card family > composes into a readable card with a title, description, content and footer | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Card family > sets the card title's font to the brand heading font | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Empty > omits the description paragraph entirely when none is given | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Empty > shows the title, an optional description, and a caller-provided action | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Separator > renders a semantic separator | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Stat > sets the value's font to the brand heading font | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Stat > shows the label and value, and only shows the hint when one is given | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Switch > is an accessible checkbox that reflects the checked prop and calls onChange when toggled | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Switch > shows as checked when the checked prop is true | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Table > renders a full table with headers and rows a user can read | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | Tabs > renders one button per tab and reports the clicked tab's key | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | form fields > Checkbox is a real checkbox input that toggles on click | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | form fields > Input forwards value, placeholder and change events like a native input | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | form fields > Label associates with its control via htmlFor so clicking the label focuses the input | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | form fields > Select renders explicit children instead of options when both are given | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | form fields > Select renders its options prop and reports the chosen value | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | form fields > Textarea forwards its value so a caller can read what was typed | Unit | Passed | `frontend/src/lib/ui.test.tsx` |
+| — | the app loads | E2E | Passed | `frontend/e2e/example.spec.ts` |
 <!-- sdlc:auto:end tests -->

@@ -5,47 +5,79 @@
 <!-- sdlc:auto:start narrative -->
 ## Overview
 
-### ARCH-001 · approved · source: architecture:summary
+### ARCH-OVERVIEW · approved · source: architecture:summary
 
-Revision 2 of the PMS Solution Architecture is approved. It is a frontend presentation-layer-only revision: every delivered screen now uses a black-and-white/greyscale monochrome theme, with status, cards, errors and validation distinguished by shading, borders, typography and contrast instead of color.
+Architecture revision applying a black-and-white/greyscale monochrome theme across every delivered screen, plus a cross-screen visual-regression/accessibility QA pass. Purely a React presentation-layer change -- no backend, data model, API, deployment or service change.
 
-Decision: approve Revision 2 of the architecture. Scope: sign-in, invite, projects dashboard, project create/edit, task create/edit, and the Kanban board are restyled to a monochrome design system (US-013 through US-016); a cross-screen visual-regression and accessibility QA pass at desktop and mobile widths is added to validate the restyle (US-017). Explicitly out of scope / unchanged: backend, data model, API, deployment, and service/runtime design — all component ids, endpoint paths and the rest of the design are carried forward unchanged from the prior revision. The frontend component's documented responsibility is updated to note the monochrome design system. An optional end-to-end/visual-regression test library is recommended (not yet selected) to support US-017.
-
-**Related:** US-013, US-014, US-015, US-016, US-017
-
-- ⚠ The input is for Revision 2 only; Revision 1 content is not included here, so earlier rationale/approvals for the pre-restyle architecture are not available to cross-check.
-- ⚠ No specific visual-regression/E2E test library has been named — it is only 'recommended', so tooling choice for US-017 is still open.
-
-### ARCH-002 · approved · source: architecture:components
-
-System is composed of six components: a React 19 frontend, a FastAPI backend, a Celery notification worker, a PostgreSQL database, a Redis queue, and an S3 object store for attachments.
-
-- frontend: Web App (React 19) — responsive SPA covering sign-in, projects dashboard, Kanban board, task list, task detail with comments/checklists/labels; keeps views in sync over shared task state; now applies a monochrome black-and-white/greyscale design system across all screens, distinguishing status/errors via shading, borders, typography and contrast rather than color (US-013..US-017).
-- backend: API Service (FastAPI 0.115) — REST API for auth, projects, tasks, comments, checklists, labels; enforces sign-in on all project/task endpoints and admin-only invites; enqueues outbound notifications.
-- worker: Notification Worker (Celery, Python) — consumes queued jobs to push Slack webhook messages and send SendGrid emails in the background, with retry on transient failures.
-- database: PostgreSQL Database (PostgreSQL 16) — stores users, invitations, projects, tasks, comments, checklist items, labels and in-app notifications with their relationships.
-- queue: Redis Queue (Redis 7) — message broker holding outbound notification jobs so saves return immediately and failed sends are retried.
-- object_store: File Storage (Amazon S3) — object storage bucket provisioned for task file attachments.
+Note: input gives conflicting version labels -- the structured field states 'Version: 1' while the summary text calls this 'Revision 2 of the PMS Solution Architecture'; both are recorded here since the input does not reconcile them. Component ids, endpoint paths and the rest of the design carry forward unchanged from the prior revision. Frontend component responsibility updated to note the monochrome design system; an optional end-to-end/visual-regression test library is recommended to support US-017.
 
 **Related:** US-013, US-014, US-015, US-016, US-017
 
-- ⚠ S3 object store is provisioned for task file attachments, but no attachment entity appears in the data model and no attachment upload/download endpoint is listed — traceability between this component and a concrete requirement/entity/endpoint is incomplete.
+### ARCH-COMP-FRONTEND · approved · source: architecture:components:frontend
 
-### ARCH-003 · approved · source: architecture:critical_paths
+Web App (React 19): responsive single-page UI covering sign-in, projects dashboard, Kanban board, task list, and task detail with comments/checklists/labels.
 
-Three critical paths are documented: email/password sign-in with JWT issuance, task creation with async notification, and Kanban drag-to-update-status.
+Keeps views in sync over shared task state. Applies a monochrome black-and-white/greyscale design system across all screens, distinguishing status and errors by shading, borders, typography and contrast rather than color (US-013..US-017).
 
-1. Email/password sign-in: member submits credentials; API verifies password hash and issues a JWT; unauthenticated access to project/task pages redirects to sign-in. Sign-in and invite screens render in the monochrome theme, with the invalid-credentials error distinguished by contrast and typography, not color (US-013).
-2. Create task and notify: member creates a task in a project; API persists it and enqueues Slack and email notifications so the save is not blocked.
-3. Kanban drag updates status: dragging a card to another column patches the task status; change persists and is reflected in the list view over shared task state. In the monochrome theme, columns and cards are told apart by shading, borders and labels, and the moved card's new status is reflected visually without relying on color (US-016).
+**Related:** US-008, US-009, US-013, US-014, US-015, US-016, US-017
 
-**Related:** US-013, US-016
+### ARCH-COMP-BACKEND · approved · source: architecture:components:backend
 
-- ⚠ Critical paths 2 (create task and notify) and the base sign-in mechanics are not explicitly tied to a requirement id in this input, so related_ids could not be completed beyond the monochrome-specific US-013/US-016 callouts.
+API Service (FastAPI 0.115): REST API for auth, projects, tasks, comments, checklists and labels.
 
-### ARCH-004 · approved · source: architecture:entities
+Enforces sign-in on all project/task endpoints and admin-only invites. Enqueues outbound notifications rather than sending them synchronously.
 
-Data model carried forward unchanged in Revision 2: nine entities covering users, invitations, projects, tasks, comments, checklist items, labels, task-label linking, and notifications.
+### ARCH-COMP-WORKER · approved · source: architecture:components:worker
+
+Notification Worker (Celery, Python): background consumer for outbound notification jobs.
+
+Consumes queued jobs to push Slack webhook messages and send SendGrid emails in the background, retrying on transient failures.
+
+### ARCH-COMP-DB · approved · source: architecture:components:database
+
+PostgreSQL Database (PostgreSQL 16): system of record for all relational entities.
+
+Stores users, invitations, projects, tasks, comments, checklist items, labels and in-app notifications with their relationships.
+
+### ARCH-COMP-QUEUE · approved · source: architecture:components:queue
+
+Redis Queue (Redis 7): message broker for outbound notification jobs.
+
+Holds outbound notification jobs so saves return immediately and failed sends are retried, decoupling user-facing writes from Slack/email delivery.
+
+### ARCH-COMP-S3 · approved · source: architecture:components:object_store
+
+File Storage (Amazon S3): object storage bucket provisioned for task file attachments.
+
+Dedicated S3 bucket used to store attachments outside of the relational database.
+
+### ARCH-CP-AUTH · approved · source: architecture:critical_paths:signin
+
+Email/password sign-in critical path: credential verification, JWT issuance, and redirect-to-sign-in for unauthenticated access.
+
+A member submits credentials; the API verifies the password hash and issues a JWT. Unauthenticated access to project/task pages is redirected to sign-in. Sign-in and invite screens render in the monochrome theme, with the invalid-credentials error distinguished by contrast and typography, not color (US-013).
+
+**Related:** US-001, US-013
+
+### ARCH-CP-TASKNOTIFY · approved · source: architecture:critical_paths:create_task
+
+Create-task critical path: task persisted immediately, notifications enqueued asynchronously.
+
+A member creates a task in a project; the API persists it and enqueues Slack and email notifications so the save is not blocked by outbound delivery.
+
+**Related:** US-006
+
+### ARCH-CP-KANBAN · approved · source: architecture:critical_paths:kanban_drag
+
+Kanban drag-update critical path: dragging a card patches task status and syncs with the list view.
+
+Dragging a card to another column patches the task status; the change persists and is reflected in the list view over the shared task state. In the monochrome theme, columns and cards are told apart by shading, borders and labels, and the moved card's new status is reflected visually without relying on color (US-016).
+
+**Related:** US-008, US-016
+
+### ARCH-ENTITIES · approved · source: architecture:entities
+
+Relational data model covering users, invitations, projects, tasks, comments, checklist items, labels and notifications.
 
 - users: id, email, password_hash, name, is_admin, created_at
 - invitations: id, email, token, invited_by, accepted, created_at, expires_at
@@ -54,47 +86,70 @@ Data model carried forward unchanged in Revision 2: nine entities covering users
 - comments: id, task_id, author_id, body, created_at
 - checklist_items: id, task_id, title, is_complete, position
 - labels: id, name, color
-- task_labels: task_id, label_id (many-to-many join)
+- task_labels: task_id, label_id
 - notifications: id, user_id, type, payload, read, created_at
 
-- ⚠ No entity for file attachments despite S3 being provisioned specifically for task file attachments — this mismatch should be confirmed/resolved.
+### ARCH-ENDPOINTS · approved · source: architecture:endpoints
 
-### ARCH-005 · approved · source: architecture:endpoints
+REST API surface for auth, invitations, projects, tasks, comments, checklists and labels.
 
-API surface carried forward unchanged: 19 REST endpoints covering auth/invites, projects, tasks, comments, checklist items, labels, and notifications.
+- POST /auth/login -- authenticate, returns JWT
+- POST /auth/accept-invite -- invitee sets password via invite token
+- GET /auth/me -- current user
+- POST /invitations -- admin invites colleague, blocks duplicates
+- GET /projects -- list with task counts
+- POST /projects -- create (name required)
+- GET /projects/{id} -- get one
+- PATCH /projects/{id} -- edit name/description
+- GET /projects/{id}/tasks -- list tasks for board/list views
+- POST /projects/{id}/tasks -- create task (title required), enqueues notification
+- GET /tasks/{id} -- get task with comments, checklist, labels
+- PATCH /tasks/{id} -- update status/owner/due date, enqueues notification
+- GET /tasks/{id}/comments -- chronological list
+- POST /tasks/{id}/comments -- post comment (empty rejected)
+- POST /tasks/{id}/checklist -- add checklist item, starts incomplete
+- PATCH /checklist/{id} -- toggle complete state
+- GET /labels -- list labels
+- POST /tasks/{id}/labels -- apply label
+- DELETE /tasks/{id}/labels/{label_id} -- remove label
+- GET /notifications -- current user's in-app notifications
 
-Auth/invite: POST /auth/login (authenticate, returns JWT); POST /auth/accept-invite (set password via invite token); GET /auth/me (current user); POST /invitations (admin invites colleague, blocks duplicate existing members).
-Projects: GET /projects (list with task counts); POST /projects (create, name required); GET /projects/{id}; PATCH /projects/{id} (edit name/description).
-Tasks: GET /projects/{id}/tasks (list for board/list views); POST /projects/{id}/tasks (create, title required, enqueues notification); GET /tasks/{id} (with comments, checklist, labels); PATCH /tasks/{id} (update status/owner/due date, enqueues notification).
-Comments: GET /tasks/{id}/comments (chronological); POST /tasks/{id}/comments (empty text rejected).
-Checklist: POST /tasks/{id}/checklist (add item, starts incomplete); PATCH /checklist/{id} (toggle complete).
-Labels: GET /labels; POST /tasks/{id}/labels (apply); DELETE /tasks/{id}/labels/{label_id} (remove).
-Notifications: GET /notifications (current user's in-app notifications).
+### ARCH-DEPLOYMENT-NODES · approved · source: architecture:deployment_nodes
 
-- ⚠ No endpoint for uploading/retrieving task file attachments, despite the S3 object_store component existing for that purpose.
+Deployment topology: web SPA, API, worker, managed Postgres, Redis and S3.
 
-### ARCH-006 · approved · source: architecture:deployment
+- web: React 19 SPA served via Next.js, Node.js
+- api: FastAPI 0.115 (Uvicorn), Python 3.12
+- worker: Celery worker, Python 3.12
+- postgres: Amazon RDS for PostgreSQL 16
+- redis: Redis 7 (redis:7-alpine)
+- s3: Amazon S3 bucket
 
-Deployment topology is unchanged in this revision: six nodes spanning web, api, worker, Postgres, Redis and S3.
+### ARCH-TECH-FRONTEND · approved · source: architecture:technology_decisions:frontend
 
-- web: React 19 SPA served via Next.js, Node.js.
-- api: FastAPI 0.115 (Uvicorn), Python 3.12.
-- worker: Celery worker, Python 3.12.
-- postgres: Amazon RDS for PostgreSQL 16.
-- redis: Redis 7 (redis:7-alpine image).
-- s3: Amazon S3 bucket.
-The architecture input states explicitly that no deployment change was required for this revision's monochrome restyle.
+React 19 chosen over Vue/Svelte for the state-heavy, live-updating Kanban/list/task-detail screens.
 
-### ARCH-007 · approved · source: architecture:technology_decisions
+React 19 drives the three state-heavy, live-updating screens from one responsive codebase, with drag-and-drop and inline editing, delivered via the scaffolded Next.js app. The monochrome restyle (US-013..US-017) is handled with shared CSS/design tokens over the same component tree.
 
-Four technology decisions are recorded: React 19 for frontend, FastAPI 0.115 for backend, PostgreSQL 16 for database, and AWS for cloud hosting, each with alternatives considered and rationale.
+**Related:** US-008, US-009, US-013, US-016
 
-- Frontend: React 19 (alternatives considered: Vue, Svelte). Rationale: drives the three state-heavy, live-updating screens (Kanban, list, task detail) from one responsive codebase with drag-and-drop and inline editing, delivered via the scaffolded Next.js app. The monochrome restyle (US-013..US-017) is implemented via shared CSS/design tokens over the same React component tree so status/errors are conveyed by shading, borders, typography and contrast rather than color.
-- Backend: FastAPI 0.115 (alternatives considered: Flask, Django REST Framework). Rationale: cleanly serves project/task CRUD, enforces JWT auth on all pages, eases one-way Slack webhook and email integrations, and provides automatic OpenAPI docs for the team.
-- Database: PostgreSQL 16 (alternatives considered: MySQL, SQLite). Rationale: the highly relational model (projects→tasks, tasks→comments/checklists, many-to-many labels) maps naturally to PostgreSQL, which comfortably handles the scale of a few dozen projects and 25 users.
-- Cloud: AWS (alternatives considered: GCP, Azure). Rationale: provides managed RDS PostgreSQL, S3 for attachments, and compute together for a single internal team, avoiding multi-vendor stitching, and scales down affordably for 25 users.
+### ARCH-TECH-BACKEND · approved · source: architecture:technology_decisions:backend
 
-**Related:** US-013, US-014, US-015, US-016, US-017
+FastAPI 0.115 chosen over Flask/Django REST Framework.
+
+Cleanly serves project/task CRUD, enforces JWT auth on all pages, and makes the one-way Slack webhook and email integrations easy to wire, with automatic OpenAPI docs for the team.
+
+### ARCH-TECH-DB · approved · source: architecture:technology_decisions:database
+
+PostgreSQL 16 chosen over MySQL/SQLite.
+
+The highly relational model -- projects to tasks, tasks to comments, checklists, and many-to-many labels -- maps naturally to PostgreSQL 16, comfortably within capacity for a few dozen projects and 25 users.
+
+### ARCH-TECH-CLOUD · approved · source: architecture:technology_decisions:cloud
+
+AWS chosen over GCP/Azure.
+
+Provides managed RDS PostgreSQL, S3 for attachments and compute in one place, so a single internal team avoids stitching vendors together; scales down affordably for 25 users.
 <!-- sdlc:auto:end narrative -->
 
 <!-- sdlc:auto:start building-blocks -->
