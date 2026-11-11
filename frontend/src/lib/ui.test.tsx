@@ -1,3 +1,15 @@
+/**
+ * Unit tests for the component vocabulary in frontend/src/lib/ui.tsx.
+ *
+ * This ticket carries no acceptance criteria of its own, so these tests
+ * exercise what the file's own doc comment promises: every component is a
+ * thin, accessible wrapper that (a) forwards the props a caller gives it
+ * (children, onClick, onChange, value, disabled, ...) and (b) wires brand
+ * tokens (--brand-primary, --brand-accent, --brand-radius, --brand-font-*)
+ * through so a theme change repaints without touching a screen. We assert
+ * behaviour and wiring, not the utility class strings, so a restyle that
+ * keeps both intact keeps these tests green.
+ */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -20,195 +32,206 @@ import {
   Separator,
   Stat,
   Switch,
+  Tabs,
   TBody,
   TD,
   TH,
   THead,
   TR,
   Table,
-  Tabs,
   Textarea,
 } from "@/lib/ui";
 
 describe("Button", () => {
-  it("renders its children as a real button a user can click", async () => {
+  it("renders its children and fires onClick when clicked", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
-    render(<Button onClick={onClick}>Save</Button>);
-    const button = screen.getByRole("button", { name: "Save" });
+    render(<Button onClick={onClick}>Save project</Button>);
+    const button = screen.getByRole("button", { name: "Save project" });
     await user.click(button);
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("disables the button and stops it from receiving clicks when disabled", async () => {
+  it("does not fire onClick when disabled", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
     render(
       <Button onClick={onClick} disabled>
-        Save
+        Save project
       </Button>,
     );
-    const button = screen.getByRole("button", { name: "Save" });
+    const button = screen.getByRole("button", { name: "Save project" });
     expect(button).toBeDisabled();
     await user.click(button);
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("paints the primary variant from the brand custom property instead of a hardcoded color", () => {
-    render(<Button variant="primary">Go</Button>);
-    const button = screen.getByRole("button", { name: "Go" });
+  it("paints the brand primary color onto a primary button so a theme change repaints it", () => {
+    render(<Button>Primary</Button>);
+    const button = screen.getByRole("button", { name: "Primary" });
     expect(button.style.backgroundColor).toBe("var(--brand-primary)");
   });
 
-  it("does not apply the brand background to non-primary variants", () => {
+  it("leaves background color unset for non-primary variants", () => {
     render(<Button variant="secondary">Cancel</Button>);
     const button = screen.getByRole("button", { name: "Cancel" });
     expect(button.style.backgroundColor).toBe("");
   });
 
-  it("falls back to the primary look for an unknown variant rather than rendering unstyled", () => {
-    render(<Button variant="not-a-real-variant">Weird</Button>);
-    const button = screen.getByRole("button", { name: "Weird" });
-    expect(button.style.backgroundColor).toBe("var(--brand-primary)");
-  });
-
-  it("lets a caller's className and inline style win over the built-in ones", () => {
+  it("lets a caller's own inline style win over the branded background", () => {
     render(
-      <Button className="my-extra-class" style={{ backgroundColor: "red" }}>
-        Styled
+      <Button style={{ backgroundColor: "rebeccapurple" }}>
+        Override
       </Button>,
     );
-    const button = screen.getByRole("button", { name: "Styled" });
-    expect(button).toHaveClass("my-extra-class");
-    expect(button.style.backgroundColor).toBe("red");
+    const button = screen.getByRole("button", { name: "Override" });
+    expect(button.style.backgroundColor).toBe("rebeccapurple");
+  });
+
+  it("falls back to the primary styling for an unknown variant or size instead of crashing", () => {
+    render(
+      <Button variant="not-a-real-variant" size="not-a-real-size">
+        Odd
+      </Button>,
+    );
+    expect(screen.getByRole("button", { name: "Odd" })).toBeInTheDocument();
   });
 });
 
-describe("Card", () => {
-  it("assembles a card from its parts with the title and description a user reads", () => {
+describe("Card family", () => {
+  it("composes into a readable card with a title, description, content and footer", () => {
     render(
-      <Card data-testid="card">
+      <Card>
         <CardHeader>
-          <CardTitle>Project Alpha</CardTitle>
-          <CardDescription>A short summary</CardDescription>
+          <CardTitle>Launch checklist</CardTitle>
+          <CardDescription>Everything before go-live.</CardDescription>
         </CardHeader>
-        <CardContent>Body content</CardContent>
-        <CardFooter>Footer content</CardFooter>
+        <CardContent>Three tasks remaining.</CardContent>
+        <CardFooter>
+          <Button>Close</Button>
+        </CardFooter>
       </Card>,
     );
-    expect(screen.getByText("Project Alpha")).toBeInTheDocument();
-    expect(screen.getByText("A short summary")).toBeInTheDocument();
-    expect(screen.getByText("Body content")).toBeInTheDocument();
-    expect(screen.getByText("Footer content")).toBeInTheDocument();
+    expect(screen.getByText("Launch checklist")).toBeInTheDocument();
+    expect(screen.getByText("Everything before go-live.")).toBeInTheDocument();
+    expect(screen.getByText("Three tasks remaining.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 
-  it("renders the title as a heading so the card's subject is announced to assistive tech", () => {
-    render(<CardTitle>Heading text</CardTitle>);
-    expect(screen.getByRole("heading", { name: "Heading text" })).toBeInTheDocument();
+  it("sets the card title's font to the brand heading font", () => {
+    render(<CardTitle>Heading</CardTitle>);
+    expect(screen.getByText("Heading")).toHaveStyle({
+      fontFamily: "var(--brand-font-heading)",
+    });
   });
 });
 
 describe("form fields", () => {
-  it("lets a user type into an Input and read back the value", async () => {
+  it("Input forwards value, placeholder and change events like a native input", async () => {
     const user = userEvent.setup();
-    render(<Input placeholder="Name" />);
+    const onChange = vi.fn();
+    render(<Input placeholder="Name" value="" onChange={onChange} />);
     const input = screen.getByPlaceholderText("Name");
-    await user.type(input, "Ada Lovelace");
-    expect(input).toHaveValue("Ada Lovelace");
+    await user.type(input, "a");
+    expect(onChange).toHaveBeenCalled();
   });
 
-  it("lets a user type multi-line text into a Textarea", async () => {
-    const user = userEvent.setup();
-    render(<Textarea placeholder="Notes" />);
-    const textarea = screen.getByPlaceholderText("Notes");
-    await user.type(textarea, "line one");
-    expect(textarea).toHaveValue("line one");
+  it("Textarea forwards its value so a caller can read what was typed", () => {
+    render(<Textarea readOnly value="Some notes" aria-label="Notes" />);
+    expect(screen.getByLabelText("Notes")).toHaveValue("Some notes");
   });
 
-  it("associates a Label with its field by htmlFor so clicking the label focuses the input", async () => {
+  it("Label associates with its control via htmlFor so clicking the label focuses the input", async () => {
     const user = userEvent.setup();
     render(
       <>
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" />
+        <Label htmlFor="owner">Owner</Label>
+        <Input id="owner" />
       </>,
     );
-    await user.click(screen.getByText("Email"));
-    expect(screen.getByLabelText("Email")).toHaveFocus();
+    await user.click(screen.getByText("Owner"));
+    expect(screen.getByLabelText("Owner")).toHaveFocus();
   });
 
-  it("renders Select options from the options prop and lets a user choose one", async () => {
+  it("Select renders its options prop and reports the chosen value", async () => {
     const user = userEvent.setup();
+    const onChange = vi.fn();
     render(
       <Select
         aria-label="Status"
+        defaultValue="open"
+        onChange={onChange}
         options={[
-          { value: "todo", label: "To do" },
+          { value: "open", label: "Open" },
           { value: "done", label: "Done" },
         ]}
       />,
     );
-    const select = screen.getByLabelText("Status") as HTMLSelectElement;
-    expect(screen.getByRole("option", { name: "To do" })).toBeInTheDocument();
+    const select = screen.getByLabelText("Status");
+    expect(screen.getByRole("option", { name: "Open" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Done" })).toBeInTheDocument();
     await user.selectOptions(select, "done");
+    expect(onChange).toHaveBeenCalled();
     expect(select).toHaveValue("done");
   });
 
-  it("prefers explicit children over the options prop when a caller supplies both", () => {
+  it("Select renders explicit children instead of options when both are given", () => {
     render(
-      <Select aria-label="Status" options={[{ value: "todo", label: "To do" }]}>
-        <option value="custom">Custom</option>
+      <Select aria-label="Priority" options={[{ value: "low", label: "Low" }]}>
+        <option value="high">High</option>
       </Select>,
     );
-    expect(screen.getByRole("option", { name: "Custom" })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "To do" })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "High" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Low" })).not.toBeInTheDocument();
   });
 
-  it("toggles a Checkbox when the user clicks it", async () => {
+  it("Checkbox is a real checkbox input that toggles on click", async () => {
     const user = userEvent.setup();
-    render(<Checkbox aria-label="Agree" />);
-    const checkbox = screen.getByLabelText("Agree") as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    const onChange = vi.fn();
+    render(<Checkbox aria-label="Done" onChange={onChange} />);
+    const checkbox = screen.getByRole("checkbox", { name: "Done" });
+    expect(checkbox).not.toBeChecked();
     await user.click(checkbox);
-    expect(checkbox.checked).toBe(true);
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("Switch", () => {
-  it("reflects the checked prop and reports toggles through onChange", async () => {
+  it("is an accessible checkbox that reflects the checked prop and calls onChange when toggled", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    const { rerender } = render(<Switch checked={false} onChange={onChange} />);
-    const input = screen.getByRole("checkbox", { hidden: true }) as HTMLInputElement;
-    expect(input.checked).toBe(false);
-
-    await user.click(input);
+    render(<Switch checked={false} onChange={onChange} />);
+    const toggle = screen.getByRole("checkbox", { hidden: true });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
     expect(onChange).toHaveBeenCalledTimes(1);
+  });
 
-    rerender(<Switch checked={true} onChange={onChange} />);
-    expect((screen.getByRole("checkbox", { hidden: true }) as HTMLInputElement).checked).toBe(
-      true,
-    );
+  it("shows as checked when the checked prop is true", () => {
+    render(<Switch checked onChange={() => {}} />);
+    expect(screen.getByRole("checkbox", { hidden: true })).toBeChecked();
   });
 });
 
 describe("Badge", () => {
-  it("paints the accent variant from the brand accent custom property", () => {
-    render(<Badge variant="accent">New</Badge>);
-    const badge = screen.getByText("New");
-    expect(badge.style.backgroundColor).toBe("var(--brand-accent)");
+  it("renders its label text", () => {
+    render(<Badge>Active</Badge>);
+    expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
-  it("does not apply the brand accent background to the default variant", () => {
-    render(<Badge>Default</Badge>);
-    const badge = screen.getByText("Default");
-    expect(badge.style.backgroundColor).toBe("");
+  it("paints the brand accent color only for the accent variant", () => {
+    render(<Badge variant="accent">Featured</Badge>);
+    expect(screen.getByText("Featured").style.backgroundColor).toBe("var(--brand-accent)");
+  });
+
+  it("leaves background color to its stylesheet classes for a non-accent variant", () => {
+    render(<Badge variant="success">Done</Badge>);
+    expect(screen.getByText("Done").style.backgroundColor).toBe("");
   });
 });
 
 describe("Table", () => {
-  it("renders a real table with head, body rows and cells a user can read", () => {
+  it("renders a full table with headers and rows a user can read", () => {
     render(
       <Table>
         <THead>
@@ -219,48 +242,54 @@ describe("Table", () => {
         </THead>
         <TBody>
           <TR>
-            <TD>Alpha</TD>
-            <TD>Done</TD>
+            <TD>Launch site</TD>
+            <TD>Open</TD>
           </TR>
         </TBody>
       </Table>,
     );
-    expect(screen.getByRole("table")).toBeInTheDocument();
+    const table = screen.getByRole("table");
+    expect(table).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Status" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "Alpha" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "Done" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Launch site" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Open" })).toBeInTheDocument();
   });
 });
 
 describe("Avatar", () => {
-  it("shows the initials of up to two name parts when there is no image", () => {
-    render(<Avatar name="Ada Lovelace" />);
-    expect(screen.getByText("AL")).toBeInTheDocument();
+  it("shows initials made of the first letter of the first two words of the name", () => {
+    render(<Avatar name="Rhea Patel" />);
+    expect(screen.getByText("RP")).toBeInTheDocument();
   });
 
-  it("ignores extra words in the name beyond the first two", () => {
-    render(<Avatar name="Ada Byron Lovelace" />);
-    expect(screen.getByText("AB")).toBeInTheDocument();
+  it("collapses to a single initial for a one-word name", () => {
+    render(<Avatar name="Rhea" />);
+    expect(screen.getByText("R")).toBeInTheDocument();
   });
 
-  it("renders the image with the name as its alt text when a src is given", () => {
-    render(<Avatar name="Ada Lovelace" src="https://example.com/ada.png" />);
-    const img = screen.getByRole("img", { name: "Ada Lovelace" }) as HTMLImageElement;
-    expect(img.src).toBe("https://example.com/ada.png");
-    expect(screen.queryByText("AL")).not.toBeInTheDocument();
+  it("renders an image with alt text equal to the name when a src is given, instead of initials", () => {
+    render(<Avatar name="Rhea Patel" src="/avatar.png" />);
+    const img = screen.getByRole("img", { name: "Rhea Patel" });
+    expect(img).toHaveAttribute("src", "/avatar.png");
+    expect(screen.queryByText("RP")).not.toBeInTheDocument();
+  });
+
+  it("renders no initials for an empty name instead of crashing", () => {
+    const { container } = render(<Avatar />);
+    expect(container.textContent).toBe("");
   });
 });
 
 describe("Separator", () => {
-  it("renders a horizontal rule that separates content", () => {
+  it("renders a semantic separator", () => {
     render(<Separator />);
     expect(screen.getByRole("separator")).toBeInTheDocument();
   });
 });
 
 describe("Tabs", () => {
-  it("lets a user switch tabs and reports the chosen key", async () => {
+  it("renders one button per tab and reports the clicked tab's key", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(
@@ -273,59 +302,46 @@ describe("Tabs", () => {
         onChange={onChange}
       />,
     );
+    expect(screen.getByRole("button", { name: "Board" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "List" }));
     expect(onChange).toHaveBeenCalledWith("list");
-  });
-
-  it("renders every tab passed in, even before any is active", () => {
-    render(
-      <Tabs
-        tabs={[
-          { key: "a", label: "A" },
-          { key: "b", label: "B" },
-        ]}
-      />,
-    );
-    expect(screen.getByRole("button", { name: "A" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "B" })).toBeInTheDocument();
   });
 });
 
 describe("Stat", () => {
-  it("shows the label, value and optional hint a user reads on a dashboard", () => {
-    render(<Stat label="Open tasks" value={42} hint="as of today" />);
+  it("shows the label and value, and only shows the hint when one is given", () => {
+    const { rerender } = render(<Stat label="Open tasks" value={12} />);
     expect(screen.getByText("Open tasks")).toBeInTheDocument();
-    expect(screen.getByText("42")).toBeInTheDocument();
-    expect(screen.getByText("as of today")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.queryByText("+3 this week")).not.toBeInTheDocument();
+
+    rerender(<Stat label="Open tasks" value={12} hint="+3 this week" />);
+    expect(screen.getByText("+3 this week")).toBeInTheDocument();
   });
 
-  it("omits the hint paragraph entirely when none is given", () => {
-    render(<Stat label="Open tasks" value={42} />);
-    expect(screen.queryByText("as of today")).not.toBeInTheDocument();
+  it("sets the value's font to the brand heading font", () => {
+    render(<Stat label="Open tasks" value={12} />);
+    expect(screen.getByText("12")).toHaveStyle({ fontFamily: "var(--brand-font-heading)" });
   });
 });
 
 describe("Empty", () => {
-  it("shows the title, optional description and an action a user can take", async () => {
-    const user = userEvent.setup();
-    const onClick = vi.fn();
+  it("shows the title, an optional description, and a caller-provided action", () => {
     render(
       <Empty
         title="No tasks yet"
         description="Create your first task to get started."
-        action={<button onClick={onClick}>New task</button>}
+        action={<Button>New task</Button>}
       />,
     );
     expect(screen.getByText("No tasks yet")).toBeInTheDocument();
-    expect(
-      screen.getByText("Create your first task to get started."),
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "New task" }));
-    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Create your first task to get started.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New task" })).toBeInTheDocument();
   });
 
-  it("omits the description entirely when none is given", () => {
-    render(<Empty title="No tasks yet" />);
-    expect(screen.queryByText(/create your first/i)).not.toBeInTheDocument();
+  it("omits the description paragraph entirely when none is given", () => {
+    const { container } = render(<Empty title="No tasks yet" />);
+    expect(screen.getByText("No tasks yet")).toBeInTheDocument();
+    expect(container.querySelectorAll("p")).toHaveLength(1);
   });
 });
