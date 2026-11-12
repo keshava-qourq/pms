@@ -1,153 +1,190 @@
-"""Unit tests for `app.seed` (no acceptance criteria of its own).
+"""Unit tests for `app.seed` (the demo-member seeding helper).
 
-`app.seed.seed_demo_user` inserts a demo member with a known password only
-if no user with `SEED_EMAIL` already exists, so running `python -m app.seed`
-twice against the same database is safe. These tests exercise the function
-and the module's env-driven defaults directly -- no `client` fixture, no
-`TestClient` -- per the ticket. Tests are named after the behaviour they
-cover rather than an AC id, since this ticket carries none.
+This ticket carries no acceptance criteria of its own (the Jira ticket says
+so explicitly), so these tests pin the contract the module's docstring and
+code promise instead:
+
+* `SEED_EMAIL`, `SEED_PASSWORD` default to `demo@example.com` /
+  `password123` when `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` are unset, and
+  are read from those environment variables when set.
+* `seed_demo_user` creates exactly one `User` row with the seed email, seed
+  name, `is_admin=True`, and a password hash that verifies against the seed
+  password -- and nothing else (no plaintext password stored).
+* Running it again against a database that already has that email is a
+  no-op: it returns the existing row rather than inserting a second one or
+  changing the one that is already there (the module's own "idempotent"
+  claim, and the reason a caller can safely re-run it).
+
+No `client` fixture, no `TestClient`: these call `seed_demo_user` directly
+against a real `Session` (ENVIRONMENT.md: no mocking the configured
+database) and clean up every row they create. Tests that reload the module
+under patched `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` restore the real
+values before returning, because `importlib.reload` mutates the same module
+object other already-imported code still points at.
 """
 
 import importlib
+import os
 import uuid
+
+import pytest
+from sqlalchemy.orm import Session
 
 import app.seed as seed_module
 from app.models import User
-from app.security import hash_password, verify_password
+from app.security import verify_password
+
+# Captured once, before any test touches the environment, so reload-based
+# tests can put the module back exactly as every other test file expects it.
+_REAL_SEED_EMAIL = os.environ.get("SEED_USER_EMAIL")
+_REAL_SEED_PASSWORD = os.environ.get("SEED_USER_PASSWORD")
 
 
-def test_seed_email_defaults_to_demo_example_when_env_var_unset(monkeypatch) -> None:
+def _restore_real_module(monkeypatch: pytest.MonkeyPatch) -> None:
+    if _REAL_SEED_EMAIL is None:
+        monkeypatch.delenv("SEED_USER_EMAIL", raising=False)
+    else:
+        monkeypatch.setenv("SEED_USER_EMAIL", _REAL_SEED_EMAIL)
+    if _REAL_SEED_PASSWORD is None:
+        monkeypatch.delenv("SEED_USER_PASSWORD", raising=False)
+    else:
+        monkeypatch.setenv("SEED_USER_PASSWORD", _REAL_SEED_PASSWORD)
+    importlib.reload(seed_module)
+
+
+def _delete_by_email(db_session: Session, email: str) -> None:
+    row = db_session.query(User).filter(User.email == email).first()
+    if row is not None:
+        db_session.delete(row)
+        db_session.commit()
+
+
+def test_seed_email_defaults_to_demo_example_com_when_env_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("SEED_USER_EMAIL", raising=False)
-    reloaded = importlib.reload(seed_module)
     try:
+        reloaded = importlib.reload(seed_module)
         assert reloaded.SEED_EMAIL == "demo@example.com"
     finally:
-        importlib.reload(seed_module)
+        _restore_real_module(monkeypatch)
 
 
-def test_seed_email_honours_env_var_when_set(monkeypatch) -> None:
-    monkeypatch.setenv("SEED_USER_EMAIL", "custom-seed@example.com")
-    reloaded = importlib.reload(seed_module)
-    try:
-        assert reloaded.SEED_EMAIL == "custom-seed@example.com"
-    finally:
-        importlib.reload(seed_module)
-
-
-def test_seed_password_defaults_to_password123_when_env_var_unset(monkeypatch) -> None:
+def test_seed_password_defaults_to_password123_when_env_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("SEED_USER_PASSWORD", raising=False)
-    reloaded = importlib.reload(seed_module)
     try:
+        reloaded = importlib.reload(seed_module)
         assert reloaded.SEED_PASSWORD == "password123"
     finally:
-        importlib.reload(seed_module)
+        _restore_real_module(monkeypatch)
 
 
-def test_seed_password_honours_env_var_when_set(monkeypatch) -> None:
-    monkeypatch.setenv("SEED_USER_PASSWORD", "super-secret-456")
-    reloaded = importlib.reload(seed_module)
+def test_seed_user_email_env_var_overrides_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    custom_email = f"seed-override-{uuid.uuid4().hex[:10]}@example.com"
+    monkeypatch.setenv("SEED_USER_EMAIL", custom_email)
     try:
-        assert reloaded.SEED_PASSWORD == "super-secret-456"
+        reloaded = importlib.reload(seed_module)
+        assert reloaded.SEED_EMAIL == custom_email
     finally:
-        importlib.reload(seed_module)
+        _restore_real_module(monkeypatch)
 
 
-def test_seed_name_is_demo_member() -> None:
-    assert seed_module.SEED_NAME == "Demo Member"
-
-
-def _unique_seed_email() -> str:
-    return f"seed-{uuid.uuid4().hex[:10]}@example.com"
-
-
-def test_seed_demo_user_creates_a_user_with_the_configured_email_and_password(
-    db_session, monkeypatch
-) -> None:
-    email = _unique_seed_email()
-    monkeypatch.setattr(seed_module, "SEED_EMAIL", email)
-    monkeypatch.setattr(seed_module, "SEED_PASSWORD", "a-known-password")
-
+def test_seed_user_password_env_var_overrides_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    custom_password = f"custom-{uuid.uuid4().hex[:10]}"
+    monkeypatch.setenv("SEED_USER_PASSWORD", custom_password)
     try:
-        user = seed_module.seed_demo_user(db_session)
-
-        assert user.email == email
-        assert user.name == "Demo Member"
-        assert user.is_admin is True
-        # The stored hash must actually verify the configured password, and
-        # reject a wrong one -- not merely be "some non-empty string".
-        assert verify_password("a-known-password", user.password_hash)
-        assert verify_password("wrong-password", user.password_hash) is False
-
-        stored = db_session.query(User).filter(User.email == email).one()
-        assert stored.id == user.id
+        reloaded = importlib.reload(seed_module)
+        assert reloaded.SEED_PASSWORD == custom_password
     finally:
-        existing = db_session.query(User).filter(User.email == email).first()
-        if existing is not None:
-            db_session.delete(existing)
-            db_session.commit()
+        _restore_real_module(monkeypatch)
 
 
-def test_seed_demo_user_is_idempotent_and_does_not_insert_a_duplicate(
-    db_session, monkeypatch
+def test_seed_demo_user_creates_a_user_with_expected_attributes(
+    monkeypatch: pytest.MonkeyPatch, db_session: Session
 ) -> None:
-    email = _unique_seed_email()
-    monkeypatch.setattr(seed_module, "SEED_EMAIL", email)
-    monkeypatch.setattr(seed_module, "SEED_PASSWORD", "first-password")
-
+    custom_email = f"seed-create-{uuid.uuid4().hex[:10]}@example.com"
+    custom_password = f"pw-{uuid.uuid4().hex[:10]}"
+    monkeypatch.setenv("SEED_USER_EMAIL", custom_email)
+    monkeypatch.setenv("SEED_USER_PASSWORD", custom_password)
     try:
-        first = seed_module.seed_demo_user(db_session)
+        reloaded = importlib.reload(seed_module)
 
-        # Running it again -- as `python -m app.seed` would on a second
-        # deploy, possibly with a changed env var -- must not insert a
-        # second row for the same email.
-        monkeypatch.setattr(seed_module, "SEED_PASSWORD", "second-password")
-        second = seed_module.seed_demo_user(db_session)
+        created = reloaded.seed_demo_user(db_session)
+
+        assert created.email == custom_email
+        assert created.name == reloaded.SEED_NAME
+        assert created.is_admin is True
+        # The stored hash verifies the seed password, and is not the
+        # plaintext password itself.
+        assert created.password_hash != custom_password
+        assert verify_password(custom_password, created.password_hash) is True
+
+        found = db_session.query(User).filter(User.email == custom_email).all()
+        assert len(found) == 1
+    finally:
+        _delete_by_email(db_session, custom_email)
+        _restore_real_module(monkeypatch)
+
+
+def test_seed_demo_user_is_idempotent_and_inserts_only_once(
+    monkeypatch: pytest.MonkeyPatch, db_session: Session
+) -> None:
+    custom_email = f"seed-idempotent-{uuid.uuid4().hex[:10]}@example.com"
+    monkeypatch.setenv("SEED_USER_EMAIL", custom_email)
+    monkeypatch.setenv("SEED_USER_PASSWORD", f"pw-{uuid.uuid4().hex[:10]}")
+    try:
+        reloaded = importlib.reload(seed_module)
+
+        first = reloaded.seed_demo_user(db_session)
+        second = reloaded.seed_demo_user(db_session)
 
         assert second.id == first.id
-        matches = db_session.query(User).filter(User.email == email).all()
-        assert len(matches) == 1
 
-        # The already-existing user's password is left untouched by the
-        # second, no-op call.
-        assert verify_password("first-password", matches[0].password_hash)
-        assert verify_password("second-password", matches[0].password_hash) is False
+        rows = db_session.query(User).filter(User.email == custom_email).all()
+        assert len(rows) == 1
     finally:
-        existing = db_session.query(User).filter(User.email == email).first()
-        if existing is not None:
-            db_session.delete(existing)
-            db_session.commit()
+        _delete_by_email(db_session, custom_email)
+        _restore_real_module(monkeypatch)
 
 
-def test_seed_demo_user_returns_a_pre_existing_user_unmodified(db_session, monkeypatch) -> None:
-    email = _unique_seed_email()
-    monkeypatch.setattr(seed_module, "SEED_EMAIL", email)
-    monkeypatch.setattr(seed_module, "SEED_PASSWORD", "ignored-password")
+def test_seed_demo_user_returns_existing_row_without_changing_it(
+    monkeypatch: pytest.MonkeyPatch, db_session: Session
+) -> None:
+    # If the email already exists (e.g. a real member signed up with it, or
+    # a previous seed run used a different password), re-running must not
+    # reset the password or any other attribute on the existing row.
+    from app.security import hash_password
 
-    pre_existing = User(
-        email=email,
-        password_hash=hash_password("already-set-password"),
-        name="Someone Else",
-        is_admin=False,
-    )
-    db_session.add(pre_existing)
-    db_session.commit()
-    db_session.refresh(pre_existing)
-
+    custom_email = f"seed-preexisting-{uuid.uuid4().hex[:10]}@example.com"
+    monkeypatch.setenv("SEED_USER_EMAIL", custom_email)
+    monkeypatch.setenv("SEED_USER_PASSWORD", "seed-password-not-used")
     try:
-        returned = seed_module.seed_demo_user(db_session)
+        reloaded = importlib.reload(seed_module)
+
+        pre_existing = User(
+            email=custom_email,
+            password_hash=hash_password("a-completely-different-password"),
+            name="Already Here",
+            is_admin=False,
+        )
+        db_session.add(pre_existing)
+        db_session.commit()
+        db_session.refresh(pre_existing)
+
+        returned = reloaded.seed_demo_user(db_session)
 
         assert returned.id == pre_existing.id
-        assert returned.name == "Someone Else"
+        assert returned.name == "Already Here"
         assert returned.is_admin is False
-        # The configured SEED_PASSWORD is ignored once a user already
-        # exists with that email -- it must not overwrite their hash.
-        assert verify_password("already-set-password", returned.password_hash)
-        assert verify_password("ignored-password", returned.password_hash) is False
+        assert returned.password_hash == pre_existing.password_hash
+        # The seed password from this run must not verify against the row
+        # that was already there.
+        assert verify_password("seed-password-not-used", returned.password_hash) is False
 
-        matches = db_session.query(User).filter(User.email == email).all()
-        assert len(matches) == 1
+        rows = db_session.query(User).filter(User.email == custom_email).all()
+        assert len(rows) == 1
     finally:
-        existing = db_session.query(User).filter(User.email == email).first()
-        if existing is not None:
-            db_session.delete(existing)
-            db_session.commit()
+        _delete_by_email(db_session, custom_email)
+        _restore_real_module(monkeypatch)

@@ -1,85 +1,76 @@
-"""Unit tests for `app.celery_app` (no acceptance criteria of its own).
+"""Unit tests for `app.celery_app` (the shared Celery app).
 
-`celery_app` is pure configuration: one `Celery` instance, its broker/result
-backend URL, and the two reliability settings (`task_acks_late`,
-`worker_prefetch_multiplier=1`) the module docstring says every task must be
-able to rely on for safe redelivery. There is no endpoint and no database
-row behind any of this, so these tests inspect the object and its
-configuration directly rather than going through a client or a running
-worker. Tests are named after the behaviour they cover rather than an AC id,
-per the ticket.
+The ticket carries no acceptance criteria of its own, so these tests pin the
+behaviour the module's docstring and code promise: one `Celery` app named
+"pms", broker and result backend both pointed at `REDIS_URL` (read from the
+environment with a local default), and the two reliability settings the
+architecture requires of every job on this queue -- `task_acks_late=True` and
+`worker_prefetch_multiplier=1`, so a worker crash mid-run redelivers rather
+than loses the job (US-006, US-007 depend on this).
+
+No `client` fixture, no `TestClient`, no database: this module declares no
+tasks and touches no other service, so these tests import it directly and
+inspect the object it builds. `REDIS_URL` tests reload the module under a
+patched environment (restoring it afterwards) because the constant is bound
+once, at import time, from `os.getenv`.
 """
 
 import importlib
-import os
+
+from celery import Celery
 
 import app.celery_app as celery_app_module
-from app.celery_app import celery_app
+from app.celery_app import REDIS_URL, celery_app
 
 
-def test_celery_app_is_a_celery_instance() -> None:
-    from celery import Celery
-
+def test_celery_app_is_a_celery_instance_named_pms() -> None:
     assert isinstance(celery_app, Celery)
-
-
-def test_celery_app_named_pms() -> None:
     assert celery_app.main == "pms"
 
 
+def test_broker_and_result_backend_both_point_at_redis_url() -> None:
+    assert celery_app.conf.broker_url == REDIS_URL
+    assert celery_app.conf.result_backend == REDIS_URL
+
+
 def test_task_acks_late_is_enabled() -> None:
-    # A worker that crashes mid-run must have the job redelivered, not lost
-    # (per the module docstring); late acknowledgement is what makes that so.
+    # Required so a worker crash mid-run redelivers the job instead of
+    # losing it -- every task on this queue must tolerate that redelivery.
     assert celery_app.conf.task_acks_late is True
 
 
 def test_worker_prefetch_multiplier_is_one() -> None:
-    # Paired with task_acks_late: a worker only holds one unacknowledged job
-    # at a time, so a crash redelivers at most the job it was running.
+    # Paired with task_acks_late: a worker only ever holds one unacked job,
+    # so a crash redelivers at most that one job, not a whole prefetched batch.
     assert celery_app.conf.worker_prefetch_multiplier == 1
 
 
-def test_broker_and_backend_default_to_the_module_level_redis_url() -> None:
-    # Both the API (enqueuing) and the worker (consuming) import this same
-    # module, so they must agree on one broker/backend URL -- the module's
-    # REDIS_URL constant -- rather than each reading the environment again.
-    assert celery_app.conf.broker_url == celery_app_module.REDIS_URL
-    assert celery_app.conf.result_backend == celery_app_module.REDIS_URL
+def test_no_tasks_are_registered_by_this_module_alone() -> None:
+    # The docstring is explicit: no tasks are registered here. Any task name
+    # already known to this app at import time would mean something slipped
+    # into the module that the docstring says belongs to feature tickets
+    # instead (e.g. app.tasks). Celery's own builtin control tasks are the
+    # only ones that should be present.
+    registered = set(celery_app.tasks.keys())
+    non_builtin = {name for name in registered if not name.startswith("celery.")}
+    assert non_builtin == set()
 
 
-def test_redis_url_falls_back_to_localhost_when_env_var_unset(monkeypatch) -> None:
-    original_redis_url = os.environ.get("REDIS_URL")
+def test_redis_url_defaults_to_localhost_when_env_var_is_unset(monkeypatch) -> None:
     monkeypatch.delenv("REDIS_URL", raising=False)
     try:
         reloaded = importlib.reload(celery_app_module)
         assert reloaded.REDIS_URL == "redis://localhost:6379/0"
-        assert reloaded.celery_app.conf.broker_url == "redis://localhost:6379/0"
     finally:
-        # Put REDIS_URL back exactly as it was and reload again, so the module's
-        # top-level `celery_app`/`REDIS_URL` that every other test (and other
-        # modules already holding a reference) depend on reflect the real
-        # configuration for the rest of the run.
-        if original_redis_url is not None:
-            monkeypatch.setenv("REDIS_URL", original_redis_url)
         importlib.reload(celery_app_module)
 
 
-def test_redis_url_honours_the_env_var_when_set(monkeypatch) -> None:
+def test_redis_url_reads_the_environment_variable_when_set(monkeypatch) -> None:
     monkeypatch.setenv("REDIS_URL", "redis://example-queue-host:6380/3")
-    reloaded = importlib.reload(celery_app_module)
     try:
+        reloaded = importlib.reload(celery_app_module)
         assert reloaded.REDIS_URL == "redis://example-queue-host:6380/3"
         assert reloaded.celery_app.conf.broker_url == "redis://example-queue-host:6380/3"
         assert reloaded.celery_app.conf.result_backend == "redis://example-queue-host:6380/3"
     finally:
         importlib.reload(celery_app_module)
-
-
-def test_no_tasks_are_registered_by_this_module() -> None:
-    # The module docstring is explicit: "No tasks are registered here" -- any
-    # task names present come from importing app.tasks (or another feature
-    # module) elsewhere in the process, never from celery_app itself.
-    builtin_or_celery_internal = {
-        name for name in celery_app.tasks if name.startswith("celery.")
-    }
-    assert set(celery_app.tasks) - builtin_or_celery_internal == set()
