@@ -1,78 +1,128 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { SignIn } from "./SignIn";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockPost = vi.fn();
+import SignIn from "@/screens/SignIn";
+import { clearSession, getToken, getUser } from "@/lib/api";
 
-vi.mock("../api/client", () => ({
-  client: {
-    POST: (...args: unknown[]) => mockPost(...args),
-  },
-}));
+function renderSignIn(initialEntries: string[] = ["/sign-in"]) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <Routes>
+        <Route path="/sign-in" element={<SignIn />} />
+        <Route path="/projects" element={<div>Projects overview</div>} />
+        <Route path="/task" element={<div>Task detail</div>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
 
 describe("SignIn", () => {
   beforeEach(() => {
-    mockPost.mockReset();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
   });
 
-  it("[AC-042] does not display the removed descriptive paragraph", () => {
-    render(<SignIn />);
-
-    expect(
-      screen.queryByText(
-        "Email and password. Every signed-in member sees and edits every project in the workspace."
-      )
-    ).not.toBeInTheDocument();
+  afterEach(() => {
+    clearSession();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
-  it("[AC-043] renders the email field, password field and submit button with no visual regression", () => {
-    render(<SignIn />);
+  it("[AC-001] submits email and password to POST /auth/login, stores the session and lands on projects", async () => {
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        access_token: "jwt-abc",
+        token_type: "bearer",
+        user: { id: "u1", email: "rhea.okafor@meridian.works", name: "Rhea Okafor" },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
-    expect(screen.getByTestId("signin-email")).toBeInTheDocument();
-    expect(screen.getByTestId("signin-password")).toBeInTheDocument();
-    expect(screen.getByTestId("signin-submit")).toBeInTheDocument();
-    expect(screen.queryByTestId("signin-error")).not.toBeInTheDocument();
+    renderSignIn();
+
+    await user.type(screen.getByLabelText(/email address/i), "rhea.okafor@meridian.works");
+    await user.type(screen.getByLabelText(/password/i), "northline-42");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/auth/login");
+    expect(JSON.parse(init.body)).toEqual({
+      email: "rhea.okafor@meridian.works",
+      password: "northline-42",
+    });
+
+    await waitFor(() => expect(getToken()).toBe("jwt-abc"));
+    expect(getUser()).toEqual({
+      id: "u1",
+      email: "rhea.okafor@meridian.works",
+      name: "Rhea Okafor",
+    });
+
+    await vi.advanceTimersByTimeAsync(700);
+    await waitFor(() => expect(screen.getByText("Projects overview")).toBeInTheDocument());
   });
 
-  it("[AC-044] shows an error message when sign-in fails", async () => {
-    mockPost.mockResolvedValue({
-      data: undefined,
-      error: { message: "invalid credentials" },
+  it("[AC-002] shows the invalid-credentials error on 401, stays on the page and stores no token", async () => {
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ detail: "Invalid credentials" }),
     });
-    render(<SignIn />);
+    vi.stubGlobal("fetch", fetchMock);
 
-    fireEvent.change(screen.getByTestId("signin-email"), {
-      target: { value: "alice@example.com" },
-    });
-    fireEvent.change(screen.getByTestId("signin-password"), {
-      target: { value: crypto.randomUUID() },
-    });
-    fireEvent.click(screen.getByTestId("signin-submit"));
+    renderSignIn();
+
+    await user.type(screen.getByLabelText(/email address/i), "rhea.okafor@meridian.works");
+    await user.type(screen.getByLabelText(/password/i), "wrong-password");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() =>
-      expect(screen.getByTestId("signin-error")).toHaveTextContent(
-        "Invalid email or password."
-      )
+      expect(screen.getByText(/those credentials are invalid/i)).toBeInTheDocument(),
     );
+    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
+    expect(getToken()).toBeNull();
   });
 
-  it("[AC-044] signs the user in and reports the token on success", async () => {
-    mockPost.mockResolvedValue({
-      data: { token: "tok-123" },
-      error: undefined,
-    });
-    const onSignedIn = vi.fn();
-    render(<SignIn onSignedIn={onSignedIn} />);
+  it("removes the seeded demo-credentials hint", () => {
+    renderSignIn();
+    expect(screen.queryByText(/demo account/i)).not.toBeInTheDocument();
+  });
 
-    fireEvent.change(screen.getByTestId("signin-email"), {
-      target: { value: "alice@example.com" },
+  it("[AC-003] after signing in via a redirect, lands back on the originally requested page", async () => {
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        access_token: "jwt-xyz",
+        token_type: "bearer",
+        user: { id: "u1", email: "rhea.okafor@meridian.works" },
+      }),
     });
-    fireEvent.change(screen.getByTestId("signin-password"), {
-      target: { value: crypto.randomUUID() },
-    });
-    fireEvent.click(screen.getByTestId("signin-submit"));
+    vi.stubGlobal("fetch", fetchMock);
 
-    await waitFor(() => expect(onSignedIn).toHaveBeenCalledWith("tok-123"));
-    expect(screen.queryByTestId("signin-error")).not.toBeInTheDocument();
+    render(
+      <MemoryRouter
+        initialEntries={[{ pathname: "/sign-in", state: { from: { pathname: "/task" } } }]}
+      >
+        <Routes>
+          <Route path="/sign-in" element={<SignIn />} />
+          <Route path="/task" element={<div>Task detail</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/email address/i), "rhea.okafor@meridian.works");
+    await user.type(screen.getByLabelText(/password/i), "northline-42");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await vi.advanceTimersByTimeAsync(700);
+    await waitFor(() => expect(screen.getByText("Task detail")).toBeInTheDocument());
   });
 });
