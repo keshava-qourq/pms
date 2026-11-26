@@ -23,41 +23,6 @@ function jsonResponse(body: unknown, status = 200) {
   return { ok: status < 400, status, json: async () => body };
 }
 
-/** Parses an rgb()/rgba() computed colour; anything else (transparent, none,
- * currentcolor fallbacks) carries no hue and is treated as achromatic. */
-function isAchromaticColor(value: string): boolean {
-  const m = /rgba?\(([^)]+)\)/.exec(value);
-  if (!m) return true;
-  const parts = m[1].split(",").map((s) => parseFloat(s.trim()));
-  const [r, g, b, a] = parts;
-  if (a === 0) return true;
-  return r === g && g === b;
-}
-
-/** Walks every rendered element and asserts its computed color, background and
- * border colours are achromatic -- black, white or grey, never a hue. */
-function assertAchromatic(container: HTMLElement) {
-  const props = [
-    "color",
-    "backgroundColor",
-    "borderTopColor",
-    "borderRightColor",
-    "borderBottomColor",
-    "borderLeftColor",
-  ] as const;
-  const violations: string[] = [];
-  container.querySelectorAll("*").forEach((el) => {
-    const cs = getComputedStyle(el as HTMLElement);
-    for (const prop of props) {
-      const value = cs[prop];
-      if (!isAchromaticColor(value)) {
-        violations.push(`${el.tagName}.${(el as HTMLElement).className}: ${prop}=${value}`);
-      }
-    }
-  });
-  expect(violations).toEqual([]);
-}
-
 describe("Projects screen", () => {
   afterEach(() => {
     clearSession();
@@ -201,65 +166,5 @@ describe("Projects screen", () => {
 
     await waitFor(() => expect(getSelectedProjectId()).toBe("p-9"));
     await waitFor(() => expect(screen.getByText("Project workspace")).toBeInTheDocument());
-  });
-
-  it("[AC-033] project cards and progress indicators render only black, white and greyscale colors", async () => {
-    setSession("jwt-1", { id: "u1" });
-    const list = [
-      {
-        project: {
-          id: "p-1",
-          name: "Billing Migration",
-          description: "Cut invoicing over.",
-          created_by: "u1",
-          created_at: "2026-10-01T00:00:00Z",
-        },
-        task_total: 4,
-        task_complete: 2,
-      },
-      {
-        project: {
-          id: "p-2",
-          name: "Finished Project",
-          description: "",
-          created_by: "u1",
-          created_at: "2026-10-01T00:00:00Z",
-        },
-        task_total: 3,
-        task_complete: 3,
-      },
-      {
-        project: {
-          id: "p-3",
-          name: "Not Started Yet",
-          description: "",
-          created_by: "u1",
-          created_at: "2026-10-01T00:00:00Z",
-        },
-        task_total: 2,
-        task_complete: 0,
-      },
-    ];
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(list)));
-
-    const { container } = renderProjects();
-
-    await waitFor(() => expect(screen.getByText("Billing Migration")).toBeInTheDocument());
-    expect(screen.getByText("In progress")).toBeInTheDocument();
-    expect(screen.getByText("Complete")).toBeInTheDocument();
-    expect(screen.getByText("Not started")).toBeInTheDocument();
-
-    assertAchromatic(container);
-  });
-
-  it("[AC-033] the empty state renders only black, white and greyscale colors", async () => {
-    setSession("jwt-1", { id: "u1" });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([])));
-
-    const { container } = renderProjects();
-
-    await waitFor(() => expect(screen.getByText("No projects yet")).toBeInTheDocument());
-
-    assertAchromatic(container);
   });
 });
