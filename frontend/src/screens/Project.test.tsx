@@ -23,6 +23,41 @@ function jsonResponse(body: unknown, status = 200) {
   return { ok: status < 400, status, json: async () => body };
 }
 
+/** Parses an rgb()/rgba() computed colour; anything else (transparent, none,
+ * currentcolor fallbacks) carries no hue and is treated as achromatic. */
+function isAchromaticColor(value: string): boolean {
+  const m = /rgba?\(([^)]+)\)/.exec(value);
+  if (!m) return true;
+  const parts = m[1].split(",").map((s) => parseFloat(s.trim()));
+  const [r, g, b, a] = parts;
+  if (a === 0) return true;
+  return r === g && g === b;
+}
+
+/** Walks every rendered element and asserts its computed color, background and
+ * border colours are achromatic -- black, white or grey, never a hue. */
+function assertAchromatic(container: HTMLElement) {
+  const props = [
+    "color",
+    "backgroundColor",
+    "borderTopColor",
+    "borderRightColor",
+    "borderBottomColor",
+    "borderLeftColor",
+  ] as const;
+  const violations: string[] = [];
+  container.querySelectorAll("*").forEach((el) => {
+    const cs = getComputedStyle(el as HTMLElement);
+    for (const prop of props) {
+      const value = cs[prop];
+      if (!isAchromaticColor(value)) {
+        violations.push(`${el.tagName}.${(el as HTMLElement).className}: ${prop}=${value}`);
+      }
+    }
+  });
+  expect(violations).toEqual([]);
+}
+
 const PROJECT = {
   id: "p-42",
   name: "Billing Migration",
@@ -191,5 +226,41 @@ describe("Project screen", () => {
     await waitFor(() => expect(screen.getByText("Billing Migration")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /edit project/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /new task/i })).toBeEnabled();
+  });
+
+  it("[AC-034] the edit project form fields and buttons render only black, white and greyscale colors", async () => {
+    const fetchMock = fetchRouter();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    const { container } = renderProject();
+
+    await waitFor(() => expect(screen.getByText("Billing Migration")).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /edit project/i }));
+    await screen.findByRole("dialog");
+
+    assertAchromatic(container);
+  });
+
+  it("[AC-034] the edit project validation message renders only black, white and greyscale colors", async () => {
+    const fetchMock = fetchRouter();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    const { container } = renderProject();
+
+    await waitFor(() => expect(screen.getByText("Billing Migration")).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /edit project/i }));
+    const nameInput = await screen.findByLabelText(/^Name/i);
+    await user.clear(nameInput);
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Give the project a name so the team can find it."),
+      ).toBeInTheDocument(),
+    );
+
+    assertAchromatic(container);
   });
 });

@@ -19,8 +19,8 @@ function cx(...parts: Array<string | false | null | undefined>): string {
 
 const BUTTON_VARIANTS: Record<string, string> = {
   primary: "text-white shadow-sm hover:opacity-90",
-  secondary: "border bg-white hover:bg-slate-50",
-  ghost: "hover:bg-slate-100",
+  secondary: "border bg-white hover:bg-neutral-50",
+  ghost: "hover:bg-neutral-100",
   danger: "bg-red-600 text-white hover:bg-red-700",
 };
 
@@ -60,7 +60,7 @@ export function Card({ className, ...props }: Div) {
     <div
       {...props}
       className={cx(
-        "rounded-[var(--brand-radius)] border border-slate-200 bg-white shadow-sm",
+        "rounded-[var(--brand-radius)] border border-neutral-200 bg-white shadow-sm",
         className,
       )}
     />
@@ -75,14 +75,14 @@ export function CardTitle({ className, ...props }: Div) {
   return (
     <h3
       {...props}
-      className={cx("text-base font-semibold tracking-tight text-slate-900", className)}
+      className={cx("text-base font-semibold tracking-tight text-neutral-900", className)}
       style={{ fontFamily: "var(--brand-font-heading)" }}
     />
   );
 }
 
 export function CardDescription({ className, ...props }: Div) {
-  return <p {...props} className={cx("text-sm text-slate-500", className)} />;
+  return <p {...props} className={cx("text-sm text-neutral-500", className)} />;
 }
 
 export function CardContent({ className, ...props }: Div) {
@@ -93,14 +93,14 @@ export function CardFooter({ className, ...props }: Div) {
   return (
     <div
       {...props}
-      className={cx("flex items-center gap-2 border-t border-slate-100 p-5", className)}
+      className={cx("flex items-center gap-2 border-t border-neutral-100 p-5", className)}
     />
   );
 }
 
 const FIELD =
-  "w-full rounded-[var(--brand-radius)] border border-slate-300 bg-white px-3 py-2 text-sm " +
-  "placeholder:text-slate-400 focus:border-[var(--brand-primary)] focus:outline-none " +
+  "w-full rounded-[var(--brand-radius)] border border-neutral-300 bg-white px-3 py-2 text-sm " +
+  "placeholder:text-neutral-400 focus:border-[var(--brand-primary)] focus:outline-none " +
   "focus:ring-1 focus:ring-[var(--brand-primary)]";
 
 export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -115,7 +115,7 @@ export function Textarea({
 }
 
 export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label {...props} className={cx("text-sm font-medium text-slate-700", className)} />;
+  return <label {...props} className={cx("text-sm font-medium text-neutral-700", className)} />;
 }
 
 export function Select({
@@ -143,7 +143,7 @@ export function Checkbox({ className, ...props }: React.InputHTMLAttributes<HTML
     <input
       {...props}
       type="checkbox"
-      className={cx("h-4 w-4 rounded border-slate-300 accent-[var(--brand-primary)]", className)}
+      className={cx("h-4 w-4 rounded border-neutral-300 accent-[var(--brand-primary)]", className)}
     />
   );
 }
@@ -161,7 +161,7 @@ export function Switch({
     <label className={cx("inline-flex cursor-pointer items-center", className)}>
       <input type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
       <span
-        className="relative h-5 w-9 rounded-full bg-slate-300 transition-colors peer-checked:bg-[var(--brand-primary)]"
+        className="relative h-5 w-9 rounded-full bg-neutral-300 transition-colors peer-checked:bg-[var(--brand-primary)]"
         aria-hidden
       >
         <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
@@ -171,7 +171,7 @@ export function Switch({
 }
 
 const BADGE_VARIANTS: Record<string, string> = {
-  default: "bg-slate-100 text-slate-700",
+  default: "bg-neutral-100 text-neutral-700",
   success: "bg-emerald-50 text-emerald-700",
   warning: "bg-amber-50 text-amber-700",
   danger: "bg-red-50 text-red-700",
@@ -206,15 +206,15 @@ export function Table({ className, ...props }: React.TableHTMLAttributes<HTMLTab
 }
 
 export function THead({ className, ...props }: Div) {
-  return <thead {...props} className={cx("border-b border-slate-200", className)} />;
+  return <thead {...props} className={cx("border-b border-neutral-200", className)} />;
 }
 
 export function TBody({ className, ...props }: Div) {
-  return <tbody {...props} className={cx("divide-y divide-slate-100", className)} />;
+  return <tbody {...props} className={cx("divide-y divide-neutral-100", className)} />;
 }
 
 export function TR({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
-  return <tr {...props} className={cx("transition-colors hover:bg-slate-50", className)} />;
+  return <tr {...props} className={cx("transition-colors hover:bg-neutral-50", className)} />;
 }
 
 export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
@@ -222,7 +222,7 @@ export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCell
     <th
       {...props}
       className={cx(
-        "px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500",
+        "px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500",
         className,
       )}
     />
@@ -230,7 +230,7 @@ export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCell
 }
 
 export function TD({ className, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td {...props} className={cx("px-3 py-2.5 text-slate-700", className)} />;
+  return <td {...props} className={cx("px-3 py-2.5 text-neutral-700", className)} />;
 }
 
 export function Avatar({
@@ -252,7 +252,7 @@ export function Avatar({
     <span
       className={cx(
         "inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full",
-        "bg-slate-200 text-xs font-medium text-slate-600",
+        "bg-neutral-200 text-xs font-medium text-neutral-600",
         className,
       )}
     >
@@ -262,7 +262,7 @@ export function Avatar({
 }
 
 export function Separator({ className }: { className?: string }) {
-  return <hr className={cx("border-slate-200", className)} />;
+  return <hr className={cx("border-neutral-200", className)} />;
 }
 
 export function Tabs({
@@ -277,7 +277,7 @@ export function Tabs({
   className?: string;
 }) {
   return (
-    <div className={cx("flex gap-1 border-b border-slate-200", className)}>
+    <div className={cx("flex gap-1 border-b border-neutral-200", className)}>
       {tabs.map((tab) => {
         const selected = tab.key === active;
         return (
@@ -287,8 +287,8 @@ export function Tabs({
             className={cx(
               "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
               selected
-                ? "border-[var(--brand-primary)] text-slate-900"
-                : "border-transparent text-slate-500 hover:text-slate-800",
+                ? "border-[var(--brand-primary)] text-neutral-900"
+                : "border-transparent text-neutral-500 hover:text-neutral-800",
             )}
           >
             {tab.label}
@@ -313,18 +313,18 @@ export function Stat({
   return (
     <div
       className={cx(
-        "rounded-[var(--brand-radius)] border border-slate-200 bg-white p-4",
+        "rounded-[var(--brand-radius)] border border-neutral-200 bg-white p-4",
         className,
       )}
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</p>
       <p
-        className="mt-1 text-2xl font-semibold text-slate-900"
+        className="mt-1 text-2xl font-semibold text-neutral-900"
         style={{ fontFamily: "var(--brand-font-heading)" }}
       >
         {value}
       </p>
-      {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-xs text-neutral-500">{hint}</p> : null}
     </div>
   );
 }
@@ -344,12 +344,12 @@ export function Empty({
     <div
       className={cx(
         "flex flex-col items-center justify-center gap-2 rounded-[var(--brand-radius)]",
-        "border border-dashed border-slate-300 px-6 py-12 text-center",
+        "border border-dashed border-neutral-300 px-6 py-12 text-center",
         className,
       )}
     >
-      <p className="text-sm font-medium text-slate-900">{title}</p>
-      {description ? <p className="max-w-sm text-sm text-slate-500">{description}</p> : null}
+      <p className="text-sm font-medium text-neutral-900">{title}</p>
+      {description ? <p className="max-w-sm text-sm text-neutral-500">{description}</p> : null}
       {action}
     </div>
   );
