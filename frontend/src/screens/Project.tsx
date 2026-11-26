@@ -6,18 +6,8 @@ import { Icons } from "@/lib/icons";
 import { brand } from "@/lib/brand";
 import { useNavigate } from "@/lib/navigate";
 import { QueryClientProvider } from "@tanstack/react-query";
-import {
-  DndContext,
-  PointerSensor,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
 import { queryClient } from "@/lib/queryClient";
 import { getSelectedProjectId } from "@/lib/selectedProject";
-import { setSelectedTaskId } from "@/lib/selectedTask";
-import { getUser } from "@/lib/api";
 import {
   useProject,
   useProjectTasks,
@@ -56,6 +46,23 @@ const STATUSES = [
   { key: "done", label: "Done", wf: "b-3-2" },
 ];
 
+const TEAM = [
+  { id: "u1", name: "Priya Nandakumar", short: "Priya N" },
+  { id: "u2", name: "Tom Ek", short: "Tom Ek" },
+  { id: "u3", name: "Mia Oduya", short: "Mia Oduya" },
+  { id: "u4", name: "Dan Whitlock", short: "Dan W" },
+  { id: "u5", name: "Sara Lindqvist", short: "Sara L" },
+];
+
+const LABELS = [
+  { id: "l1", name: "Research", color: "neutral" },
+  { id: "l2", name: "Design", color: "neutral" },
+  { id: "l3", name: "Content", color: "neutral" },
+  { id: "l4", name: "Engineering", color: "neutral" },
+  { id: "l5", name: "Blocked", color: "accent" },
+  { id: "l6", name: "SEO", color: "neutral" },
+];
+
 const hexToRgba = (hex, alpha) => {
   const h = hex.replace("#", "");
   const n = parseInt(
@@ -80,11 +87,17 @@ const longDate = (iso) => {
   return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 };
 
-const ownerLabel = (options, id) => {
-  if (id === null || id === undefined || id === "") return "Unassigned";
-  const u = options.find((m) => m.id === String(id));
-  return u ? u.name : `Member ${String(id).slice(0, 8)}`;
+const ownerName = (id) => {
+  const u = TEAM.find((m) => m.id === id);
+  return u ? u.name : "Unassigned";
 };
+
+const ownerShort = (id) => {
+  const u = TEAM.find((m) => m.id === id);
+  return u ? u.short : "Unassigned";
+};
+
+const labelById = (id) => LABELS.find((l) => l.id === id);
 
 function ScreenInner() {
   const navigate = useNavigate();
@@ -105,25 +118,6 @@ function ScreenInner() {
     () => (tasksQuery.data || []).map((t) => ({ ...t, labels: t.labels || [], wf: null })),
     [tasksQuery.data],
   );
-  const currentUser = React.useMemo(() => getUser(), []);
-  const ownerOptions = React.useMemo(() => {
-    const options = new Map();
-    if (currentUser && currentUser.id !== undefined && currentUser.id !== null) {
-      const id = String(currentUser.id);
-      options.set(id, currentUser.name || currentUser.email || id);
-    }
-    tasks.forEach((t) => {
-      if (t.owner_id !== undefined && t.owner_id !== null && t.owner_id !== "") {
-        const id = String(t.owner_id);
-        if (!options.has(id)) options.set(id, id);
-      }
-    });
-    return Array.from(options, ([id, name]) => ({ id, name }));
-  }, [tasks, currentUser]);
-  const openTask = (id) => {
-    setSelectedTaskId(id);
-    navigate("task");
-  };
   const [view, setView] = React.useState("board");
   const [modal, setModal] = React.useState(null); // 'task' | 'project' | null
   const [flashId, setFlashId] = React.useState(null);
@@ -131,15 +125,8 @@ function ScreenInner() {
     mode: "synced",
     message: "All changes saved · synced 09:41",
   });
-  const dndSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-  );
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
-    if (!over) return;
-    const t = tasks.find((x) => x.id === active.id);
-    if (t && t.status !== over.id) setStatus(active.id, over.id);
-  };
+  const [dragId, setDragId] = React.useState(null);
+  const [dragCol, setDragCol] = React.useState(null);
 
   const timers = React.useRef([]);
   React.useEffect(() => () => timers.current.forEach(clearTimeout), []);
@@ -169,7 +156,7 @@ function ScreenInner() {
 
   const setOwner = (id, owner_id) => {
     const t = tasks.find((x) => x.id === id);
-    announce(`“${t ? t.title : "Task"}” assigned to ${ownerLabel(ownerOptions, owner_id)}`);
+    announce(`“${t ? t.title : "Task"}” assigned to ${ownerName(owner_id)}`);
     updateTaskMut.mutate({ id, owner_id: owner_id || null });
   };
 
@@ -189,7 +176,6 @@ function ScreenInner() {
       document.removeEventListener("keydown", onKey);
       clearTimeout(f);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- closeModal is declared below and stable for the component's lifetime; depending on it would reorder the useEffect before its declaration (TDZ).
   }, [modal]);
 
   const closeModal = () => {
@@ -205,7 +191,7 @@ function ScreenInner() {
   const emptyForm = {
     title: "",
     description: "",
-    owner_id: "",
+    owner_id: "u1",
     due_date: "2026-11-03",
     status: "todo",
     labels: [],
@@ -341,23 +327,24 @@ function ScreenInner() {
     height: 28,
   };
 
-  const LabelChip = ({ label }) => {
-    if (!label) return null;
-    const chipColor = label.color && label.color.startsWith("#") ? label.color : null;
+  const LabelChip = ({ id }) => {
+    const l = labelById(id);
+    if (!l) return null;
+    const isAccent = l.color === "accent";
     return (
       <Badge
         className="inline-flex items-center"
         style={{
           ...labelStyle,
           borderRadius: RADIUS,
-          border: `1px solid ${chipColor || hexToRgba(INK, 0.45)}`,
-          color: chipColor || INK,
+          border: `1px solid ${isAccent ? ACCENT : hexToRgba(INK, 0.45)}`,
+          color: isAccent ? ACCENT : INK,
           backgroundColor: "transparent",
           padding: "1px 5px",
           lineHeight: "15px",
         }}
       >
-        {label.name}
+        {l.name}
       </Badge>
     );
   };
@@ -369,17 +356,30 @@ function ScreenInner() {
     const colTasks = tasks.filter((t) => t.status === status.key);
     const wfLimits = { todo: 3, in_progress: 2, done: 2 };
     const sIndex = STATUSES.findIndex((s) => s.key === status.key);
-    const { setNodeRef, isOver } = useDroppable({ id: status.key });
+    const isOver = dragCol === status.key;
 
     return (
       <section
-        ref={setNodeRef}
         data-wf={status.wf}
         className="flex min-w-0 flex-col"
         style={{
           borderRight: idx < 2 ? `2px solid ${INK}` : "none",
           backgroundColor: isOver ? hexToRgba(ACCENT, 0.06) : "transparent",
           transition: "background-color .15s ease",
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragCol(status.key);
+        }}
+        onDragLeave={() => setDragCol((c) => (c === status.key ? null : c))}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragCol(null);
+          if (dragId) {
+            const t = tasks.find((x) => x.id === dragId);
+            if (t && t.status !== status.key) setStatus(dragId, status.key);
+          }
+          setDragId(null);
         }}
       >
         <header
@@ -413,118 +413,103 @@ function ScreenInner() {
         ) : (
           <ul className="flex flex-col">
             {colTasks.map((t, i) => (
-              <TaskCard
+              <li
                 key={t.id}
-                t={t}
-                i={i}
-                status={status}
-                sIndex={sIndex}
-                wfLimits={wfLimits}
-              />
+                draggable
+                onDragStart={() => setDragId(t.id)}
+                onDragEnd={() => {
+                  setDragId(null);
+                  setDragCol(null);
+                }}
+                className={`obs-card px-3 py-3 ${flashId === t.id ? "obs-flash" : ""}`}
+                style={{
+                  borderBottom: `1px solid ${RULE}`,
+                  cursor: "grab",
+                  opacity: dragId === t.id ? 0.45 : 1,
+                }}
+              >
+                <div className="flex items-start gap-2">
+                  {t.status === "done" ? (
+                    <Check
+                      aria-hidden="true"
+                      className="mt-[2px] h-3.5 w-3.5 shrink-0"
+                      style={{ color: MUTED }}
+                    />
+                  ) : null}
+                  <button
+                    type="button"
+                    data-wf={t.wf && i < wfLimits[status.key] ? t.wf : undefined}
+                    onClick={() => navigate("task")}
+                    className="obs-focus min-w-0 flex-1 text-left"
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      lineHeight: 1.35,
+                      color: t.status === "done" ? MUTED : INK,
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                    }}
+                  >
+                    {t.title}
+                  </button>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span className="tabular-nums truncate" style={{ fontSize: 11, color: MUTED }}>
+                    {ownerShort(t.owner_id)} · {shortDate(t.due_date)}
+                    {overdue(t) ? (
+                      <span style={{ color: ACCENT, fontWeight: 700 }}> · Overdue</span>
+                    ) : null}
+                  </span>
+                  <span className="obs-move flex shrink-0 gap-1 opacity-0 transition-opacity">
+                    <button
+                      type="button"
+                      aria-label={`Move “${t.title}” to ${sIndex > 0 ? STATUSES[sIndex - 1].label : "the previous column"}`}
+                      disabled={sIndex === 0}
+                      onClick={() => setStatus(t.id, STATUSES[sIndex - 1].key)}
+                      className="obs-focus flex h-7 w-7 items-center justify-center"
+                      style={{
+                        border: `1px solid ${hexToRgba(INK, sIndex === 0 ? 0.15 : 0.4)}`,
+                        borderRadius: RADIUS,
+                        color: sIndex === 0 ? hexToRgba(INK, 0.25) : INK,
+                        cursor: sIndex === 0 ? "not-allowed" : "pointer",
+                        backgroundColor: "transparent",
+                      }}
+                    >
+                      <ChevronLeft aria-hidden="true" className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Move “${t.title}” to ${sIndex < 2 ? STATUSES[sIndex + 1].label : "the next column"}`}
+                      disabled={sIndex === STATUSES.length - 1}
+                      onClick={() => setStatus(t.id, STATUSES[sIndex + 1].key)}
+                      className="obs-focus flex h-7 w-7 items-center justify-center"
+                      style={{
+                        border: `1px solid ${hexToRgba(INK, sIndex === STATUSES.length - 1 ? 0.15 : 0.4)}`,
+                        borderRadius: RADIUS,
+                        color: sIndex === STATUSES.length - 1 ? hexToRgba(INK, 0.25) : INK,
+                        cursor: sIndex === STATUSES.length - 1 ? "not-allowed" : "pointer",
+                        backgroundColor: "transparent",
+                      }}
+                    >
+                      <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </div>
+
+                {t.labels.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {t.labels.map((lid) => (
+                      <LabelChip key={lid} id={lid} />
+                    ))}
+                  </div>
+                ) : null}
+              </li>
             ))}
           </ul>
         )}
       </section>
-    );
-  };
-
-  const TaskCard = ({ t, i, status, sIndex, wfLimits }) => {
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-      id: t.id,
-    });
-    const dragStyle = transform
-      ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-      : undefined;
-    return (
-      <li
-        ref={setNodeRef}
-        {...listeners}
-        {...attributes}
-        className={`obs-card px-3 py-3 ${flashId === t.id ? "obs-flash" : ""}`}
-        style={{
-          borderBottom: `1px solid ${RULE}`,
-          cursor: "grab",
-          opacity: isDragging ? 0.45 : 1,
-          touchAction: "none",
-          ...dragStyle,
-        }}
-      >
-        <div className="flex items-start gap-2">
-          {t.status === "done" ? (
-            <Check
-              aria-hidden="true"
-              className="mt-[2px] h-3.5 w-3.5 shrink-0"
-              style={{ color: MUTED }}
-            />
-          ) : null}
-          <button
-            type="button"
-            data-wf={t.wf && i < wfLimits[status.key] ? t.wf : undefined}
-            onClick={() => openTask(t.id)}
-            className="obs-focus min-w-0 flex-1 text-left"
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              lineHeight: 1.35,
-              color: t.status === "done" ? MUTED : INK,
-              background: "none",
-              border: "none",
-              padding: 0,
-            }}
-          >
-            {t.title}
-          </button>
-        </div>
-
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="tabular-nums truncate" style={{ fontSize: 11, color: MUTED }}>
-            {ownerLabel(ownerOptions, t.owner_id)} · {shortDate(t.due_date)}
-            {overdue(t) ? <span style={{ color: ACCENT, fontWeight: 700 }}> · Overdue</span> : null}
-          </span>
-          <span className="obs-move flex shrink-0 gap-1 opacity-0 transition-opacity">
-            <button
-              type="button"
-              aria-label={`Move “${t.title}” to ${sIndex > 0 ? STATUSES[sIndex - 1].label : "the previous column"}`}
-              disabled={sIndex === 0}
-              onClick={() => setStatus(t.id, STATUSES[sIndex - 1].key)}
-              className="obs-focus flex h-7 w-7 items-center justify-center"
-              style={{
-                border: `1px solid ${hexToRgba(INK, sIndex === 0 ? 0.15 : 0.4)}`,
-                borderRadius: RADIUS,
-                color: sIndex === 0 ? hexToRgba(INK, 0.25) : INK,
-                cursor: sIndex === 0 ? "not-allowed" : "pointer",
-                backgroundColor: "transparent",
-              }}
-            >
-              <ChevronLeft aria-hidden="true" className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label={`Move “${t.title}” to ${sIndex < 2 ? STATUSES[sIndex + 1].label : "the next column"}`}
-              disabled={sIndex === STATUSES.length - 1}
-              onClick={() => setStatus(t.id, STATUSES[sIndex + 1].key)}
-              className="obs-focus flex h-7 w-7 items-center justify-center"
-              style={{
-                border: `1px solid ${hexToRgba(INK, sIndex === STATUSES.length - 1 ? 0.15 : 0.4)}`,
-                borderRadius: RADIUS,
-                color: sIndex === STATUSES.length - 1 ? hexToRgba(INK, 0.25) : INK,
-                cursor: sIndex === STATUSES.length - 1 ? "not-allowed" : "pointer",
-                backgroundColor: "transparent",
-              }}
-            >
-              <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
-            </button>
-          </span>
-        </div>
-
-        {t.labels.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {t.labels.map((label) => (
-              <LabelChip key={label.id} label={label} />
-            ))}
-          </div>
-        ) : null}
-      </li>
     );
   };
 
@@ -566,7 +551,7 @@ function ScreenInner() {
     );
   }
 
-  if (projectQuery.isError || tasksQuery.isError || !project) {
+  if (projectQuery.isError || !project) {
     return (
       <div className="w-full p-10">
         <Empty
@@ -785,16 +770,14 @@ function ScreenInner() {
                 />
               </div>
             ) : (
-              <DndContext sensors={dndSensors} onDragEnd={handleDragEnd}>
-                <div
-                  className="obs-fade grid grid-cols-1 md:grid-cols-3"
-                  style={{ border: `2px solid ${INK}`, borderRadius: RADIUS }}
-                >
-                  {STATUSES.map((s, i) => (
-                    <BoardColumn key={s.key} status={s} idx={i} />
-                  ))}
-                </div>
-              </DndContext>
+              <div
+                className="obs-fade grid grid-cols-1 md:grid-cols-3"
+                style={{ border: `2px solid ${INK}`, borderRadius: RADIUS }}
+              >
+                {STATUSES.map((s, i) => (
+                  <BoardColumn key={s.key} status={s} idx={i} />
+                ))}
+              </div>
             )
           ) : null}
           {view === "board" ? (
@@ -896,7 +879,7 @@ function ScreenInner() {
                       {tasks.map((t) => (
                         <TR
                           key={t.id}
-                          onClick={() => openTask(t.id)}
+                          onClick={() => navigate("task")}
                           className={`obs-row ${flashId === t.id ? "obs-flash" : ""}`}
                           style={{ borderBottom: `1px solid ${RULE}`, cursor: "pointer" }}
                         >
@@ -905,7 +888,7 @@ function ScreenInner() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openTask(t.id);
+                                navigate("task");
                               }}
                               className="obs-focus w-full text-left"
                               style={{
@@ -942,7 +925,7 @@ function ScreenInner() {
                               style={miniSelect}
                             >
                               <option value="">Unassigned</option>
-                              {ownerOptions.map((m) => (
+                              {TEAM.map((m) => (
                                 <option key={m.id} value={m.id}>
                                   {m.name}
                                 </option>
@@ -991,8 +974,8 @@ function ScreenInner() {
                           <TD className="px-3 py-2 align-middle">
                             {t.labels.length ? (
                               <span className="flex flex-wrap gap-1">
-                                {t.labels.map((label) => (
-                                  <LabelChip key={label.id} label={label} />
+                                {t.labels.map((lid) => (
+                                  <LabelChip key={lid} id={lid} />
                                 ))}
                               </span>
                             ) : (
@@ -1154,7 +1137,7 @@ function ScreenInner() {
                     style={fieldStyle}
                   >
                     <option value="">Unassigned</option>
-                    {ownerOptions.map((m) => (
+                    {TEAM.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name}
                       </option>

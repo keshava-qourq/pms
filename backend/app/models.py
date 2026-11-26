@@ -5,31 +5,19 @@
 email; a pending invitation's token is emailed out-of-band and accepted once
 via `POST /auth/accept-invite`. `projects` and `tasks` (US-003) are
 workspace-wide: no owner or privacy filter narrows what a signed-in member
-can see or edit. `tasks.owner_id` and `tasks.due_date` (US-006) were added by
-migrating the original `assignee_id` column rather than adding a second one.
-Schema changes go through the Alembic migration in `backend/alembic/versions/`,
-not `Base.metadata.create_all`.
+can see or edit. Schema changes go through the Alembic migration in
+`backend/alembic/versions/`, not `Base.metadata.create_all`.
 """
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
-__all__ = [
-    "Base",
-    "ChecklistItem",
-    "Comment",
-    "Invitation",
-    "Label",
-    "Project",
-    "Task",
-    "TaskLabel",
-    "User",
-]
+__all__ = ["Base", "Invitation", "Project", "Task", "User"]
 
 
 class User(Base):
@@ -83,48 +71,10 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="todo")
-    owner_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    due_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
+    assignee_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
-
-
-class Comment(Base):
-    __tablename__ = "comments"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id"), nullable=False)
-    author_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
-    body: Mapped[str] = mapped_column(Text(), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
-    )
-
-
-class ChecklistItem(Base):
-    __tablename__ = "checklist_items"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id"), nullable=False)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    is_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-
-
-class Label(Base):
-    __tablename__ = "labels"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
-
-
-class TaskLabel(Base):
-    __tablename__ = "task_labels"
-
-    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id"), primary_key=True)
-    label_id: Mapped[str] = mapped_column(String(36), ForeignKey("labels.id"), primary_key=True)

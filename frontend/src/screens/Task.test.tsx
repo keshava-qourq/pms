@@ -23,6 +23,79 @@ function jsonResponse(body: unknown, status = 200) {
   return { ok: status < 400, status, json: async () => body };
 }
 
+/** Parses an rgb()/rgba() computed colour; anything else (transparent, none,
+ * currentcolor fallbacks) carries no hue and is treated as achromatic. */
+function isAchromaticColor(value: string): boolean {
+  const m = /rgba?\(([^)]+)\)/.exec(value);
+  if (!m) return true;
+  const parts = m[1].split(",").map((s) => parseFloat(s.trim()));
+  const [r, g, b, a] = parts;
+  if (a === 0) return true;
+  return r === g && g === b;
+}
+
+/** Walks an element and its descendants and asserts every computed color,
+ * background and border colour is achromatic -- black, white or grey, never
+ * a hue. Mirrors the same helper in Project.test.tsx. */
+function assertAchromatic(container: Element) {
+  const props = [
+    "color",
+    "backgroundColor",
+    "borderTopColor",
+    "borderRightColor",
+    "borderBottomColor",
+    "borderLeftColor",
+  ] as const;
+  const violations: string[] = [];
+  container.querySelectorAll("*").forEach((el) => {
+    const cs = getComputedStyle(el as HTMLElement);
+    for (const prop of props) {
+      const value = cs[prop];
+      if (!isAchromaticColor(value)) {
+        violations.push(`${el.tagName}.${(el as HTMLElement).className}: ${prop}=${value}`);
+      }
+    }
+  });
+  expect(violations).toEqual([]);
+}
+
+/** WCAG relative luminance / contrast ratio for two rgb()/rgba() computed
+ * colours, so a legibility claim (AC-036) is checked rather than assumed. */
+function relativeLuminance(value: string): number {
+  const m = /rgba?\(([^)]+)\)/.exec(value);
+  const parts = (m ? m[1] : "255,255,255").split(",").map((s) => parseFloat(s.trim()));
+  const [r, g, b] = parts;
+  const chan = (c: number) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b);
+}
+
+function contrastRatio(a: string, b: string): number {
+  const l1 = relativeLuminance(a);
+  const l2 = relativeLuminance(b);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** The nearest ancestor (including the element itself) whose computed
+ * background is actually painted, i.e. not fully transparent -- most
+ * elements in this screen are transparent and simply show the page
+ * background painted further up the tree. */
+function effectiveBackgroundColor(el: Element): string {
+  let node: Element | null = el;
+  while (node) {
+    const value = getComputedStyle(node).backgroundColor;
+    const m = /rgba?\(([^)]+)\)/.exec(value);
+    const alpha = m ? parseFloat(m[1].split(",")[3] ?? "1") : 1;
+    if (alpha !== 0) return value;
+    node = node.parentElement;
+  }
+  return "rgb(255, 255, 255)";
+}
+
 const DETAIL = {
   task: {
     id: "t-1",
@@ -451,5 +524,45 @@ describe("Task screen", () => {
     expect(screen.queryByText(/tom ek/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/audit current sitemap/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/website redesign/i)).not.toBeInTheDocument();
+  });
+
+  it("[AC-035] owner, due date and status controls render using only black, white and greyscale tones", () => {
+    const { container } = renderTask();
+
+    const ownerControl = screen.getByLabelText(/owner/i);
+    const dueDateControl = screen.getByLabelText(/due date/i);
+    const statusControl = screen.getByLabelText(/^status$/i);
+    expect(ownerControl).toBeInTheDocument();
+    expect(dueDateControl).toBeInTheDocument();
+    expect(statusControl).toBeInTheDocument();
+
+    // Every colour -- text, background and border -- on the form and the
+    // rest of the screen is black, white or grey: no hue survives on the
+    // owner, due date or status controls (AC-035).
+    assertAchromatic(container);
+  });
+
+  it("[AC-036] the missing-title validation message remains legible against the monochrome background", async () => {
+    const user = userEvent.setup();
+    renderTask();
+
+    const titleInput = screen.getByLabelText(/^title$/i);
+    await user.clear(titleInput);
+    await user.type(titleInput, "x");
+    await user.clear(titleInput);
+
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    const message = await screen.findByText(/needs a title/i);
+    expect(message).toBeInTheDocument();
+
+    // The message itself, and the form around it, stay achromatic (AC-035
+    // applies here too) and the text keeps strong contrast against its
+    // background rather than fading into the new monochrome palette
+    // (AC-036).
+    const messageStyle = getComputedStyle(message);
+    const background = effectiveBackgroundColor(message);
+    expect(isAchromaticColor(messageStyle.color)).toBe(true);
+    expect(contrastRatio(messageStyle.color, background)).toBeGreaterThanOrEqual(4.5);
   });
 });
