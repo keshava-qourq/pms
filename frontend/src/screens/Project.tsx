@@ -276,7 +276,7 @@ function ScreenInner() {
   const css = `
     @keyframes obs-fade { from { opacity: 0 } to { opacity: 1 } }
     @keyframes obs-rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
-    @keyframes obs-flash { 0% { background-color: ${hexToRgba(ACCENT, 0.16)} } 100% { background-color: transparent } }
+    @keyframes obs-flash { 0% { background-color: ${hexToRgba(INK, 0.18)} } 100% { background-color: transparent } }
     .obs-fade { animation: obs-fade .16s ease-out both }
     .obs-rise { animation: obs-rise .2s cubic-bezier(.2,.7,.3,1) both }
     .obs-flash { animation: obs-flash 1.6s ease-out both }
@@ -330,16 +330,20 @@ function ScreenInner() {
   const LabelChip = ({ id }) => {
     const l = labelById(id);
     if (!l) return null;
-    const isAccent = l.color === "accent";
+    // Labels marked for emphasis (e.g. "Blocked") get an inverted, filled
+    // treatment instead of a colour: the distinction is a fill/contrast
+    // flip, not a hue, so it stays monochrome (AC-037) while still standing
+    // out from an ordinary outlined label (AC-038).
+    const isEmphasis = l.color === "accent";
     return (
       <Badge
         className="inline-flex items-center"
         style={{
           ...labelStyle,
           borderRadius: RADIUS,
-          border: `1px solid ${isAccent ? ACCENT : hexToRgba(INK, 0.45)}`,
-          color: isAccent ? ACCENT : INK,
-          backgroundColor: "transparent",
+          border: `1px solid ${INK}`,
+          color: isEmphasis ? brand.backgroundColor : INK,
+          backgroundColor: isEmphasis ? INK : "transparent",
           padding: "1px 5px",
           lineHeight: "15px",
         }}
@@ -352,6 +356,18 @@ function ScreenInner() {
   const overdue = (t) => t.status !== "done" && t.due_date < TODAY;
 
   /* ---------- board column ---------- */
+  // Status is never the only cue: each column carries its own grey shading
+  // and each card a matching left-border tone, on top of the column's own
+  // label and the dividers between columns (AC-038). Every tone here is a
+  // shade of the same ink colour, so the board stays strictly monochrome
+  // (AC-037) while statuses stay visually distinguishable.
+  const STATUS_SHADE = { todo: 0.02, in_progress: 0.05, done: 0.09 };
+  const STATUS_CARD_TONE = {
+    todo: hexToRgba(INK, 0.2),
+    in_progress: hexToRgba(INK, 0.55),
+    done: INK,
+  };
+
   const BoardColumn = ({ status, idx }) => {
     const colTasks = tasks.filter((t) => t.status === status.key);
     const wfLimits = { todo: 3, in_progress: 2, done: 2 };
@@ -364,7 +380,7 @@ function ScreenInner() {
         className="flex min-w-0 flex-col"
         style={{
           borderRight: idx < 2 ? `2px solid ${INK}` : "none",
-          backgroundColor: isOver ? hexToRgba(ACCENT, 0.06) : "transparent",
+          backgroundColor: isOver ? hexToRgba(INK, 0.12) : hexToRgba(INK, STATUS_SHADE[status.key]),
           transition: "background-color .15s ease",
         }}
         onDragOver={(e) => {
@@ -424,6 +440,7 @@ function ScreenInner() {
                 className={`obs-card px-3 py-3 ${flashId === t.id ? "obs-flash" : ""}`}
                 style={{
                   borderBottom: `1px solid ${RULE}`,
+                  borderLeft: `3px solid ${STATUS_CARD_TONE[status.key]}`,
                   cursor: "grab",
                   opacity: dragId === t.id ? 0.45 : 1,
                 }}
@@ -459,7 +476,7 @@ function ScreenInner() {
                   <span className="tabular-nums truncate" style={{ fontSize: 11, color: MUTED }}>
                     {ownerShort(t.owner_id)} · {shortDate(t.due_date)}
                     {overdue(t) ? (
-                      <span style={{ color: ACCENT, fontWeight: 700 }}> · Overdue</span>
+                      <span style={{ color: INK, fontWeight: 700 }}> · Overdue</span>
                     ) : null}
                   </span>
                   <span className="obs-move flex shrink-0 gap-1 opacity-0 transition-opacity">
@@ -675,7 +692,7 @@ function ScreenInner() {
                           t.status === "done"
                             ? INK
                             : t.status === "in_progress"
-                              ? ACCENT
+                              ? hexToRgba(INK, 0.55)
                               : hexToRgba(INK, 0.14),
                         transition: "background-color .2s ease",
                       }}
@@ -685,7 +702,7 @@ function ScreenInner() {
               <div className="mt-2 flex items-center justify-between gap-3">
                 <p className="tabular-nums" style={{ ...labelStyle, color: MUTED }}>
                   {tasks.filter((t) => t.status === "todo").length} to do ·{" "}
-                  <span style={{ color: ACCENT }}>
+                  <span style={{ color: INK, fontWeight: 700 }}>
                     {tasks.filter((t) => t.status === "in_progress").length} in progress
                   </span>{" "}
                   · {doneCount} done
@@ -694,7 +711,11 @@ function ScreenInner() {
                   role="status"
                   aria-live="polite"
                   className="flex items-center gap-1.5 truncate"
-                  style={{ fontSize: 11, color: saveState.mode === "saving" ? ACCENT : MUTED }}
+                  style={{
+                    fontSize: 11,
+                    color: MUTED,
+                    fontWeight: saveState.mode === "saving" ? 700 : 400,
+                  }}
                 >
                   {saveState.mode === "saving" ? (
                     <Clock aria-hidden="true" className="h-3.5 w-3.5" />
@@ -736,7 +757,7 @@ function ScreenInner() {
                     ...labelStyle,
                     fontSize: 12,
                     color: active ? INK : MUTED,
-                    borderBottom: `3px solid ${active ? ACCENT : "transparent"}`,
+                    borderBottom: `3px solid ${active ? INK : "transparent"}`,
                     background: "none",
                   }}
                 >
