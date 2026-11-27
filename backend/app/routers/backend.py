@@ -95,6 +95,15 @@ def _validate_owner_exists(db: Session, owner_id: str | None) -> None:
         )
 
 
+def _validate_title(title: str) -> None:
+    """AC-036: a missing (empty or whitespace-only) title is 422, no task created."""
+    if not title or not title.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Title is required",
+        )
+
+
 # ---- auth ------------------------------------------------------------------
 @router.post("/auth/login", response_model=LoginResponse, tags=["auth"])
 async def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:  # noqa: B008
@@ -323,6 +332,7 @@ async def create_task(
     shared Celery instance.
     """
     _get_project_or_404(db, id)
+    _validate_title(payload.title)
     _validate_owner_exists(db, payload.assignee_id)
     task = Task(
         project_id=id,

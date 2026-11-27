@@ -161,8 +161,7 @@ function useAddLabel(taskId) {
 function useRemoveLabel(taskId) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (labelId) =>
-      apiFetch(`/tasks/${taskId}/labels/${labelId}`, { method: "DELETE" }),
+    mutationFn: (labelId) => apiFetch(`/tasks/${taskId}/labels/${labelId}`, { method: "DELETE" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks", taskId] });
     },
@@ -464,25 +463,41 @@ function ScreenInner() {
               className="flex flex-wrap items-end justify-between gap-3 pb-2 mb-4"
               style={{ borderBottom: "2px solid " + ink }}
             >
-              <h2 className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: ink }}>
+              <h2
+                className="text-[12px] font-bold uppercase tracking-[0.18em]"
+                style={{ color: ink }}
+              >
                 Task details
               </h2>
               <span aria-live="polite" className="inline-flex items-center gap-1.5 text-[11px]">
                 {saveState === "saving" ? (
-                  <span className="pms-pulse inline-flex items-center gap-1.5" style={{ color: ink }}>
+                  <span
+                    className="pms-pulse inline-flex items-center gap-1.5"
+                    style={{ color: ink }}
+                  >
                     <Clock className="h-3.5 w-3.5" aria-hidden="true" /> Saving…
                   </span>
                 ) : saveState === "error" ? (
-                  <span className="inline-flex items-center gap-1.5 font-bold" style={{ color: ink }}>
+                  <span
+                    className="inline-flex items-center gap-1.5 font-bold"
+                    style={{ color: ink }}
+                  >
                     <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" /> Not saved
                   </span>
                 ) : dirty ? (
                   <span className="inline-flex items-center gap-1.5" style={{ color: ink }}>
-                    <span className="inline-block h-2 w-2" style={{ backgroundColor: ink }} aria-hidden="true" />
+                    <span
+                      className="inline-block h-2 w-2"
+                      style={{ backgroundColor: ink }}
+                      aria-hidden="true"
+                    />
                     Unsaved edits
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 tabular-nums" style={{ color: neutral }}>
+                  <span
+                    className="inline-flex items-center gap-1.5 tabular-nums"
+                    style={{ color: neutral }}
+                  >
                     <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
                     All changes saved{savedAt ? " · " + savedAt : ""}
                   </span>
@@ -599,12 +614,20 @@ function ScreenInner() {
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3 pt-4" style={{ borderTop: "2px solid " + ink }}>
+            <div
+              className="mt-6 flex flex-wrap items-center gap-3 pt-4"
+              style={{ borderTop: "2px solid " + ink }}
+            >
               <Button
                 type="submit"
                 disabled={saveState === "saving" || !dirty}
                 className="px-5 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] disabled:opacity-40"
-                style={{ backgroundColor: ink, color: bg, borderRadius: radius, border: "2px solid " + ink }}
+                style={{
+                  backgroundColor: ink,
+                  color: bg,
+                  borderRadius: radius,
+                  border: "2px solid " + ink,
+                }}
               >
                 {saveState === "saving" ? "Saving…" : "Save changes"}
               </Button>
@@ -613,7 +636,12 @@ function ScreenInner() {
                 onClick={revert}
                 disabled={!dirty || saveState === "saving"}
                 className="px-4 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] disabled:opacity-40 pms-hover"
-                style={{ backgroundColor: bg, color: ink, border: "2px solid " + ink, borderRadius: radius }}
+                style={{
+                  backgroundColor: bg,
+                  color: ink,
+                  border: "2px solid " + ink,
+                  borderRadius: radius,
+                }}
               >
                 Discard edits
               </Button>
@@ -626,7 +654,10 @@ function ScreenInner() {
               className="flex flex-wrap items-end justify-between gap-3 pb-2 mb-4"
               style={{ borderBottom: "2px solid " + ink }}
             >
-              <h2 className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: ink }}>
+              <h2
+                className="text-[12px] font-bold uppercase tracking-[0.18em]"
+                style={{ color: ink }}
+              >
                 Labels
               </h2>
             </div>
@@ -643,7 +674,9 @@ function ScreenInner() {
                     className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1"
                     style={{ border: "2px solid " + ink, borderRadius: radius }}
                   >
-                    <span className="text-[11px] font-bold uppercase tracking-[0.12em]">{l.name}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.12em]">
+                      {l.name}
+                    </span>
                     <button
                       type="button"
                       onClick={() => onRemoveLabel(l.id)}
@@ -681,7 +714,12 @@ function ScreenInner() {
               <Button
                 type="submit"
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] pms-hover"
-                style={{ border: "2px solid " + ink, borderRadius: radius, backgroundColor: bg, color: ink }}
+                style={{
+                  border: "2px solid " + ink,
+                  borderRadius: radius,
+                  backgroundColor: bg,
+                  color: ink,
+                }}
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 Add
@@ -696,7 +734,10 @@ function ScreenInner() {
             className="flex flex-wrap items-end justify-between gap-3 pb-2 mb-4"
             style={{ borderBottom: "2px solid " + ink }}
           >
-            <h2 className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: ink }}>
+            <h2
+              className="text-[12px] font-bold uppercase tracking-[0.18em]"
+              style={{ color: ink }}
+            >
               Checklist
             </h2>
           </div>
@@ -743,7 +784,11 @@ function ScreenInner() {
         </section>
 
         {/* ROW 4 — ADD CHECKLIST ITEM */}
-        <form onSubmit={addItem} className="mt-5 grid grid-cols-12 gap-x-4 gap-y-2 items-end" noValidate>
+        <form
+          onSubmit={addItem}
+          className="mt-5 grid grid-cols-12 gap-x-4 gap-y-2 items-end"
+          noValidate
+        >
           <div className="col-span-12 sm:col-span-9">
             <Label htmlFor="new-checklist-item" className={labelCls} style={{ color: ink }}>
               New item
@@ -766,14 +811,23 @@ function ScreenInner() {
             <Button
               type="submit"
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] pms-hover"
-              style={{ border: "2px solid " + ink, borderRadius: radius, backgroundColor: bg, color: ink }}
+              style={{
+                border: "2px solid " + ink,
+                borderRadius: radius,
+                backgroundColor: bg,
+                color: ink,
+              }}
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               Add item
             </Button>
           </div>
           {itemError ? (
-            <p id="new-item-error" className="col-span-12 flex items-center gap-1.5 text-[12px] font-bold" style={{ color: ink }}>
+            <p
+              id="new-item-error"
+              className="col-span-12 flex items-center gap-1.5 text-[12px] font-bold"
+              style={{ color: ink }}
+            >
               <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
               {itemError}
             </p>
@@ -786,7 +840,10 @@ function ScreenInner() {
             className="flex flex-wrap items-end justify-between gap-3 pb-2 mb-4"
             style={{ borderBottom: "2px solid " + ink }}
           >
-            <h2 className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ color: ink }}>
+            <h2
+              className="text-[12px] font-bold uppercase tracking-[0.18em]"
+              style={{ color: ink }}
+            >
               {"Comments (" + comments.length + ")"}
             </h2>
           </div>
@@ -798,7 +855,11 @@ function ScreenInner() {
           ) : (
             <ul>
               {comments.map((c) => (
-                <li key={c.id} className="flex gap-3 py-4" style={{ borderBottom: "1px solid rgba(17,17,17,0.14)" }}>
+                <li
+                  key={c.id}
+                  className="flex gap-3 py-4"
+                  style={{ borderBottom: "1px solid rgba(17,17,17,0.14)" }}
+                >
                   <div className="min-w-0">
                     <p className="text-[12px]">
                       <span className="font-bold" style={{ color: ink }}>
@@ -811,7 +872,10 @@ function ScreenInner() {
                         {fmtDateTime(c.created_at)}
                       </span>
                     </p>
-                    <p className="mt-1 text-[14px] leading-[1.55] max-w-[68ch]" style={{ color: ink }}>
+                    <p
+                      className="mt-1 text-[14px] leading-[1.55] max-w-[68ch]"
+                      style={{ color: ink }}
+                    >
                       {c.body}
                     </p>
                   </div>
@@ -822,7 +886,11 @@ function ScreenInner() {
         </section>
 
         {/* ROW 6 — WRITE A COMMENT */}
-        <form onSubmit={postComment} className="mt-5 mb-4 grid grid-cols-12 gap-x-4 gap-y-2 items-end" noValidate>
+        <form
+          onSubmit={postComment}
+          className="mt-5 mb-4 grid grid-cols-12 gap-x-4 gap-y-2 items-end"
+          noValidate
+        >
           <div className="col-span-12 sm:col-span-9">
             <Label htmlFor="new-comment" className={labelCls} style={{ color: ink }}>
               Add a comment
@@ -860,7 +928,12 @@ function ScreenInner() {
               type="submit"
               disabled={posting}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] disabled:opacity-50"
-              style={{ backgroundColor: ink, color: bg, border: "2px solid " + ink, borderRadius: radius }}
+              style={{
+                backgroundColor: ink,
+                color: bg,
+                border: "2px solid " + ink,
+                borderRadius: radius,
+              }}
             >
               {posting ? "Posting…" : "Post comment"}
             </Button>
