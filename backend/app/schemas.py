@@ -1,25 +1,18 @@
 """Pydantic request and response models.
 
-One pair per entity in the approved data model, plus the placeholder every
-generated route returns until it has been implemented.
+One pair per entity in the approved data model
+(`docs/sdlc/architecture/data-model.md`), matching the shapes
+`docs/sdlc/architecture/api/openapi.yaml` declares -- in particular, a task's
+owner is `owner_id` on the wire (the frontend and the approved spec agree on
+that name) even though the ORM attribute behind it is `Task.assignee_id`
+(see the comment on that column in `app/models.py`).
 """
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
-
-class StubResponse(BaseModel):
-    """What a generated route returns until someone implements it.
-
-    A stub that returns a typed body rather than raising keeps the service
-    startable and its OpenAPI document complete, so the frontend can be built
-    against the agreed shape while the handlers are still being written.
-    """
-
-    endpoint: str
-    status: str = "not_implemented"
-    detail: str = "Scaffolded from the approved API spec; no behaviour yet."
+TASK_STATUSES = {"todo", "in_progress", "done"}
 
 
 class LoginRequest(BaseModel):
@@ -114,35 +107,139 @@ class ProjectSummary(BaseModel):
     task_complete: int
 
 
+class LabelOut(BaseModel):
+    """A label, as returned by GET /labels and embedded on a task."""
+
+    id: str
+    name: str
+    color: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class TaskCreate(BaseModel):
-    """{title, description?, status?, assignee_id?} as POST /projects/{id}/tasks expects."""
+    """{title, description?, owner_id?, due_date?, status?} as
+    POST /projects/{id}/tasks expects."""
 
     title: str
     description: str | None = None
+    owner_id: str | None = None
+    due_date: date | None = None
     status: str | None = None
-    assignee_id: str | None = None
 
 
 class TaskUpdate(BaseModel):
-    """{title?, description?, status?, assignee_id?} as PATCH /tasks/{id} expects."""
+    """{title?, description?, owner_id?, due_date?, status?} as
+    PATCH /tasks/{id} expects."""
 
     title: str | None = None
     description: str | None = None
+    owner_id: str | None = None
+    due_date: date | None = None
     status: str | None = None
-    assignee_id: str | None = None
 
 
 class TaskOut(BaseModel):
-    """The task record returned by the /tasks and /projects/{id}/tasks routes."""
+    """The task record returned by the /tasks and /projects/{id}/tasks routes.
+
+    Built explicitly by the router (never `.model_validate(task)`) because
+    the wire field is `owner_id` while the ORM attribute behind it is
+    `Task.assignee_id`, and because `labels` is not a column on `tasks` at
+    all -- it is filled in from the `task_labels` join.
+    """
 
     id: str
     project_id: str
     title: str
     description: str | None = None
+    owner_id: str | None = None
+    due_date: date | None = None
     status: str
-    assignee_id: str | None = None
+    labels: list[LabelOut] = []
     created_at: datetime
     updated_at: datetime
+
+
+class CommentCreate(BaseModel):
+    """{body} as POST /tasks/{id}/comments expects."""
+
+    body: str
+
+
+class CommentOut(BaseModel):
+    """A comment, as returned by the /tasks/{id}/comments routes.
+
+    `author_name` is not a column on `comments`; the router fills it in from
+    the author's `User` row so a second member can see who wrote it without
+    a separate lookup.
+    """
+
+    id: str
+    task_id: str
+    author_id: str
+    author_name: str | None = None
+    body: str
+    created_at: datetime
+
+
+class ChecklistItemCreate(BaseModel):
+    """{title} as POST /tasks/{id}/checklist expects."""
+
+    title: str
+
+
+class ChecklistItemUpdate(BaseModel):
+    """{is_complete} as PATCH /checklist/{id} expects."""
+
+    is_complete: bool
+
+
+class ChecklistItemOut(BaseModel):
+    """The checklist item record returned by the checklist routes."""
+
+    id: str
+    task_id: str
+    title: str
+    is_complete: bool
+    position: int
+
+    class Config:
+        from_attributes = True
+
+
+class TaskLabelCreate(BaseModel):
+    """{label_id} as POST /tasks/{id}/labels expects."""
+
+    label_id: str
+
+
+class TaskLabelOut(BaseModel):
+    """The `task_labels` association row POST /tasks/{id}/labels returns."""
+
+    task_id: str
+    label_id: str
+
+
+class TaskDetailOut(BaseModel):
+    """What GET /tasks/{id} returns: the task with its comments, checklist
+    and labels, per the approved spec."""
+
+    task: TaskOut
+    comments: list[CommentOut]
+    checklist: list[ChecklistItemOut]
+    labels: list[LabelOut]
+
+
+class NotificationOut(BaseModel):
+    """An in-app notification, as returned by GET /notifications."""
+
+    id: str
+    user_id: str
+    type: str
+    payload: dict
+    read: bool
+    created_at: datetime
 
     class Config:
         from_attributes = True

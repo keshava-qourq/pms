@@ -5,8 +5,9 @@ import * as UI from "@/lib/ui";
 import { Icons } from "@/lib/icons";
 import { brand } from "@/lib/brand";
 import { useNavigate } from "@/lib/navigate";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { apiFetch } from "@/lib/api";
 import { getSelectedProjectId } from "@/lib/selectedProject";
 import {
   useProject,
@@ -54,14 +55,10 @@ const TEAM = [
   { id: "u5", name: "Sara Lindqvist", short: "Sara L" },
 ];
 
-const LABELS = [
-  { id: "l1", name: "Research", color: "neutral" },
-  { id: "l2", name: "Design", color: "neutral" },
-  { id: "l3", name: "Content", color: "neutral" },
-  { id: "l4", name: "Engineering", color: "neutral" },
-  { id: "l5", name: "Blocked", color: "accent" },
-  { id: "l6", name: "SEO", color: "neutral" },
-];
+// Labels have no create endpoint in the approved spec (GET /labels only):
+// the catalogue below is fetched live, not hard-coded, so this screen shows
+// whatever an admin has actually seeded, with real ids `POST /tasks/{id}/labels`
+// accepts.
 
 const hexToRgba = (hex, alpha) => {
   const h = hex.replace("#", "");
@@ -97,8 +94,6 @@ const ownerShort = (id) => {
   return u ? u.short : "Unassigned";
 };
 
-const labelById = (id) => LABELS.find((l) => l.id === id);
-
 function ScreenInner() {
   const navigate = useNavigate();
   const INK = brand.primaryColor;
@@ -110,6 +105,8 @@ function ScreenInner() {
   const [projectId] = React.useState(() => getSelectedProjectId());
   const projectQuery = useProject(projectId);
   const tasksQuery = useProjectTasks(projectId);
+  const labelsQuery = useQuery({ queryKey: ["labels"], queryFn: () => apiFetch("/labels") });
+  const labelCatalog = labelsQuery.data || [];
   const updateProjectMut = useUpdateProject(projectId);
   const updateTaskMut = useUpdateTask(projectId);
   const createTaskMut = useCreateTask(projectId);
@@ -222,6 +219,23 @@ function ScreenInner() {
         due_date: form.due_date,
         status: form.status,
       });
+      if (form.labels.length > 0) {
+        try {
+          await Promise.all(
+            form.labels.map((labelId) =>
+              apiFetch(`/tasks/${created.id}/labels`, {
+                method: "POST",
+                body: JSON.stringify({ label_id: labelId }),
+              }),
+            ),
+          );
+          queryClient.invalidateQueries({ queryKey: ["projects", projectId, "tasks"] });
+        } catch {
+          // The task itself is already saved; a label that failed to attach
+          // can be added again from the task afterwards, so this does not
+          // block the create-task success path below.
+        }
+      }
       setCreating(false);
       setFlashId(created.id);
       later(() => setFlashId(null), 1700);
@@ -327,24 +341,24 @@ function ScreenInner() {
     height: 28,
   };
 
-  const LabelChip = ({ id }) => {
-    const l = labelById(id);
-    if (!l) return null;
-    const isAccent = l.color === "accent";
+  // Labels carry meaning through shading and border only, never through the
+  // label's own stored `color` (US-013..US-017): this screen is monochrome.
+  const LabelChip = ({ label }) => {
+    if (!label) return null;
     return (
       <Badge
         className="inline-flex items-center"
         style={{
           ...labelStyle,
           borderRadius: RADIUS,
-          border: `1px solid ${isAccent ? ACCENT : hexToRgba(INK, 0.45)}`,
-          color: isAccent ? ACCENT : INK,
+          border: `1px solid ${hexToRgba(INK, 0.45)}`,
+          color: INK,
           backgroundColor: "transparent",
           padding: "1px 5px",
           lineHeight: "15px",
         }}
       >
-        {l.name}
+        {label.name}
       </Badge>
     );
   };
@@ -500,8 +514,8 @@ function ScreenInner() {
 
                 {t.labels.length > 0 ? (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {t.labels.map((lid) => (
-                      <LabelChip key={lid} id={lid} />
+                    {t.labels.map((label) => (
+                      <LabelChip key={label.id} label={label} />
                     ))}
                   </div>
                 ) : null}
@@ -974,8 +988,8 @@ function ScreenInner() {
                           <TD className="px-3 py-2 align-middle">
                             {t.labels.length ? (
                               <span className="flex flex-wrap gap-1">
-                                {t.labels.map((lid) => (
-                                  <LabelChip key={lid} id={lid} />
+                                {t.labels.map((label) => (
+                                  <LabelChip key={label.id} label={label} />
                                 ))}
                               </span>
                             ) : (
@@ -1188,7 +1202,7 @@ function ScreenInner() {
               <fieldset data-wf="i-5-0-5" className="mt-4">
                 <legend style={{ ...labelStyle, marginBottom: 6 }}>Labels</legend>
                 <div className="flex flex-wrap gap-x-5 gap-y-2">
-                  {LABELS.map((l) => {
+                  {labelCatalog.map((l) => {
                     const checked = form.labels.includes(l.id);
                     return (
                       <span key={l.id} className="flex items-center gap-2">
@@ -1206,10 +1220,7 @@ function ScreenInner() {
                           className="obs-focus h-4 w-4"
                           style={{ accentColor: INK, borderRadius: RADIUS }}
                         />
-                        <Label
-                          htmlFor={`new-label-${l.id}`}
-                          style={{ fontSize: 13, color: l.color === "accent" ? ACCENT : INK }}
-                        >
+                        <Label htmlFor={`new-label-${l.id}`} style={{ fontSize: 13, color: INK }}>
                           {l.name}
                         </Label>
                       </span>
@@ -1217,7 +1228,9 @@ function ScreenInner() {
                   })}
                 </div>
                 <p className="mt-2" style={{ fontSize: 11, color: MUTED }}>
-                  Labels show on the card and in the task list.
+                  {labelCatalog.length > 0
+                    ? "Labels show on the card and in the task list."
+                    : "No labels exist in this workspace yet."}
                 </p>
               </fieldset>
 

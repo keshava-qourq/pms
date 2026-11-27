@@ -17,11 +17,11 @@ const { Plus, Clock, ArrowLeft, AlertCircle, CheckCircle } = Icons;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+// Must match the backend's TASK_STATUSES (app/schemas.py) and the Kanban
+// board's columns (Project.tsx's STATUSES): any other value is a 422.
 const STATUS_OPTIONS = [
   { value: "todo", label: "To do" },
   { value: "in_progress", label: "In progress" },
-  { value: "blocked", label: "Blocked" },
-  { value: "in_review", label: "In review" },
   { value: "done", label: "Done" },
 ];
 

@@ -5,19 +5,33 @@
 email; a pending invitation's token is emailed out-of-band and accepted once
 via `POST /auth/accept-invite`. `projects` and `tasks` (US-003) are
 workspace-wide: no owner or privacy filter narrows what a signed-in member
-can see or edit. Schema changes go through the Alembic migration in
-`backend/alembic/versions/`, not `Base.metadata.create_all`.
+can see or edit. `comments`, `checklist_items`, `labels` and `task_labels`
+(US-010/011/012) hang off a task. `notifications` (US-006/US-007) holds the
+in-app record `GET /notifications` reads; the outbound Slack/email side of a
+save lives in `app/tasks.py`. Schema changes go through the Alembic
+migration in `backend/alembic/versions/`, not `Base.metadata.create_all`.
 """
 
 import uuid
 from datetime import UTC, date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
-__all__ = ["Base", "Invitation", "Project", "Task", "User"]
+__all__ = [
+    "Base",
+    "ChecklistItem",
+    "Comment",
+    "Invitation",
+    "Label",
+    "Notification",
+    "Project",
+    "Task",
+    "TaskLabel",
+    "User",
+]
 
 
 class User(Base):
@@ -72,14 +86,66 @@ class Task(Base):
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="todo")
     # Migration 0004 renamed the `tasks` column from `assignee_id` to `owner_id` and
-    # added `due_date`. The attribute keeps its old name here because app/schemas.py
-    # (the API spec's generated models) still exposes the field as `assignee_id`;
-    # only the underlying column name changed.
+    # added `due_date`. The attribute keeps its old name here, mapped onto the
+    # renamed column, because other code (and a still-skipped test around the
+    # notification job) constructs `Task(assignee_id=...)` directly; the API's
+    # wire contract exposes this same value as `owner_id` (see TaskOut.owner_id
+    # in app/schemas.py), matching the approved spec and the frontend.
     assignee_id: Mapped[str | None] = mapped_column("owner_id", String(36), nullable=True)
     due_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id"), nullable=False)
+    author_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+    body: Mapped[str] = mapped_column(Text(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+
+class ChecklistItem(Base):
+    __tablename__ = "checklist_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class Label(Base):
+    __tablename__ = "labels"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+
+class TaskLabel(Base):
+    __tablename__ = "task_labels"
+
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id"), primary_key=True)
+    label_id: Mapped[str] = mapped_column(String(36), ForeignKey("labels.id"), primary_key=True)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )

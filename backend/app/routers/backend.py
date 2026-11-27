@@ -1,19 +1,15 @@
 """Routes for the `backend` API Service component.
 
 The approved architecture gives this one component every path in the API
-spec (`docs/sdlc/architecture/api/openapi.yaml`). Auth (US-001) is
-implemented: `POST /auth/login` and `GET /auth/me` are real. Invitations
-(US-002) are implemented: `POST /invitations` and `POST /auth/accept-invite`.
-Projects (US-003-1) are implemented: `GET/POST /projects` and
-`GET/PATCH /projects/{id}` are workspace-wide -- no owner filter or
-per-project role narrows what a signed-in member can see or edit (AC-007,
-AC-008). Tasks (US-003-2) are implemented the same way:
-`GET/POST /projects/{id}/tasks` and `GET/PATCH /tasks/{id}` are editable by
-any signed-in member regardless of who created the task or its project
-(AC-008). Every other route -- except `/health`, `/auth/login` and
-`/auth/accept-invite` -- is guarded by the shared `get_current_user`
-dependency (NFR-001). Everything else here is still the typed `StubResponse`
-placeholder until its own ticket implements it.
+spec (`docs/sdlc/architecture/api/openapi.yaml`). Auth (US-001), invitations
+(US-002), projects (US-003-1/US-004/US-005), tasks (US-003-2/US-006/US-007),
+comments (US-010), checklists (US-011), labels (US-012) and in-app
+notifications (US-006/US-007) are all implemented here. Projects and tasks
+are workspace-wide (AC-007, AC-008): no owner filter or per-project role
+narrows what a signed-in member can see or edit. Every route except
+`/health`, `/auth/login` and `/auth/accept-invite` is guarded by the shared
+`get_current_user` dependency (NFR-001); `/invitations` additionally
+requires an admin (NFR-002).
 """
 
 import secrets
@@ -26,31 +22,48 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import Invitation, Project, Task, User
+from app.models import (
+    ChecklistItem,
+    Comment,
+    Invitation,
+    Label,
+    Notification,
+    Project,
+    Task,
+    TaskLabel,
+    User,
+)
 from app.schemas import (
+    TASK_STATUSES,
     AcceptInviteRequest,
+    ChecklistItemCreate,
+    ChecklistItemOut,
+    ChecklistItemUpdate,
+    CommentCreate,
+    CommentOut,
     InvitationCreate,
     InvitationOut,
+    LabelOut,
     LoginRequest,
     LoginResponse,
+    NotificationOut,
     ProjectCreate,
     ProjectOut,
     ProjectSummary,
     ProjectUpdate,
-    StubResponse,
     TaskCreate,
+    TaskDetailOut,
+    TaskLabelCreate,
+    TaskLabelOut,
     TaskOut,
     TaskUpdate,
     UserOut,
 )
 from app.security import create_access_token, hash_password, verify_password
-from app.tasks import send_invitation_email
+from app.tasks import notify_task_saved, send_invitation_email
 
 INVITATION_EXPIRY_DAYS = 7
 TASK_COMPLETE_STATUS = "done"
-
-# Applied to every route except /health, /auth/login and /auth/accept-invite.
-_auth = [Depends(get_current_user)]
 
 router = APIRouter()
 
@@ -60,10 +73,6 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:  # no
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
-
-
-def _stub(endpoint: str) -> StubResponse:
-    return StubResponse(endpoint=endpoint)
 
 
 def _as_aware_utc(value: datetime) -> datetime:
@@ -95,13 +104,73 @@ def _validate_owner_exists(db: Session, owner_id: str | None) -> None:
         )
 
 
-def _validate_title(title: str) -> None:
+def _validate_title(title: str) -> str:
     """AC-036: a missing (empty or whitespace-only) title is 422, no task created."""
     if not title or not title.strip():
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Title is required",
         )
+    return title.strip()
+
+
+def _validate_project_name(name: str) -> str:
+    """AC-010/AC-011: a missing (empty or whitespace-only) project name is 422."""
+    if not name or not name.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Project name is required",
+        )
+    return name.strip()
+
+
+def _validate_status(value: str | None) -> str:
+    """AC-018: a status outside the board's known set is 422, task unchanged."""
+    if value not in TASK_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Status must be one of {sorted(TASK_STATUSES)}",
+        )
+    return value
+
+
+def _labels_for_task(db: Session, task_id: str) -> list[LabelOut]:
+    labels = (
+        db.query(Label)
+        .join(TaskLabel, TaskLabel.label_id == Label.id)
+        .filter(TaskLabel.task_id == task_id)
+        .order_by(Label.name.asc())
+        .all()
+    )
+    return [LabelOut.model_validate(label) for label in labels]
+
+
+def _task_out(db: Session, task: Task) -> TaskOut:
+    return TaskOut(
+        id=task.id,
+        project_id=task.project_id,
+        title=task.title,
+        description=task.description,
+        owner_id=task.assignee_id,
+        due_date=task.due_date,
+        status=task.status,
+        labels=_labels_for_task(db, task.id),
+        created_at=task.created_at,
+        updated_at=task.updated_at,
+    )
+
+
+def _comment_out(db: Session, comment: Comment, author: User | None = None) -> CommentOut:
+    if author is None:
+        author = db.get(User, comment.author_id)
+    return CommentOut(
+        id=comment.id,
+        task_id=comment.task_id,
+        author_id=comment.author_id,
+        author_name=author.name if author else None,
+        body=comment.body,
+        created_at=comment.created_at,
+    )
 
 
 # ---- auth ------------------------------------------------------------------
@@ -254,9 +323,13 @@ async def create_project(
     current_user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> ProjectOut:
-    """{name, description?} -> {project}. JWT required; records created_by."""
+    """{name, description?} -> {project}. JWT required; records created_by.
+
+    AC-010: an empty or whitespace-only name is 422 and creates nothing.
+    """
+    name = _validate_project_name(payload.name)
     project = Project(
-        name=payload.name,
+        name=name,
         description=payload.description,
         created_by=current_user.id,
     )
@@ -287,11 +360,12 @@ async def update_project(
     """{name?, description?} -> {project}. JWT required.
 
     Any signed-in member may save edits, including one who did not create
-    the project (AC-008): there is no ownership check.
+    the project (AC-008): there is no ownership check. AC-011: a blank name
+    is 422 and leaves the record unchanged.
     """
     project = _get_project_or_404(db, id)
     if payload.name is not None:
-        project.name = payload.name
+        project.name = _validate_project_name(payload.name)
     if payload.description is not None:
         project.description = payload.description
     project.updated_at = datetime.now(UTC)
@@ -310,7 +384,7 @@ async def list_project_tasks(
     """-> [{task}]. JWT required; any signed-in member, 404 for an unknown project."""
     _get_project_or_404(db, id)
     tasks = db.query(Task).filter(Task.project_id == id).order_by(Task.created_at.desc()).all()
-    return [TaskOut.model_validate(task) for task in tasks]
+    return [_task_out(db, task) for task in tasks]
 
 
 @router.post(
@@ -325,38 +399,54 @@ async def create_task(
     current_user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> TaskOut:
-    """{title, description?, status?, assignee_id?} -> {task}, 201.
+    """{title, description?, owner_id?, due_date?, status?} -> {task}, 201.
 
-    JWT required, 404 for an unknown project. Enqueues an outbound
-    notification once implemented (US-006) -- see `app/celery_app.py` for the
-    shared Celery instance.
+    JWT required, 404 for an unknown project. Enqueues `notify_task_saved`
+    (US-006) once the task is committed.
     """
     _get_project_or_404(db, id)
-    _validate_title(payload.title)
-    _validate_owner_exists(db, payload.assignee_id)
+    title = _validate_title(payload.title)
+    _validate_owner_exists(db, payload.owner_id)
+    task_status = _validate_status(payload.status) if payload.status is not None else "todo"
     task = Task(
         project_id=id,
-        title=payload.title,
+        title=title,
         description=payload.description,
-        status=payload.status or "todo",
-        assignee_id=payload.assignee_id,
+        status=task_status,
+        assignee_id=payload.owner_id,
+        due_date=payload.due_date,
     )
     db.add(task)
     db.commit()
     db.refresh(task)
-    return TaskOut.model_validate(task)
+    notify_task_saved.delay(task.id)
+    return _task_out(db, task)
 
 
 # ---- tasks --------------------------------------------------------------------
-@router.get("/tasks/{id}", response_model=TaskOut, tags=["tasks"])
+@router.get("/tasks/{id}", response_model=TaskDetailOut, tags=["tasks"])
 async def get_task(
     id: str,
     current_user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
-) -> TaskOut:
-    """-> {task}. JWT required; any signed-in member, 404 for an unknown id."""
+) -> TaskDetailOut:
+    """-> {task, comments, checklist, labels}. JWT required, 404 for an unknown id."""
     task = _get_task_or_404(db, id)
-    return TaskOut.model_validate(task)
+    comments = (
+        db.query(Comment).filter(Comment.task_id == id).order_by(Comment.created_at.asc()).all()
+    )
+    checklist = (
+        db.query(ChecklistItem)
+        .filter(ChecklistItem.task_id == id)
+        .order_by(ChecklistItem.position.asc())
+        .all()
+    )
+    return TaskDetailOut(
+        task=_task_out(db, task),
+        comments=[_comment_out(db, comment) for comment in comments],
+        checklist=[ChecklistItemOut.model_validate(item) for item in checklist],
+        labels=_labels_for_task(db, id),
+    )
 
 
 @router.patch("/tasks/{id}", response_model=TaskOut, tags=["tasks"])
@@ -366,86 +456,217 @@ async def update_task(
     current_user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> TaskOut:
-    """{title?, description?, status?, assignee_id?} -> {task}.
+    """{title?, description?, owner_id?, due_date?, status?} -> {task}.
 
     JWT required. Any signed-in member may save edits, including one who did
     not create the task or its project (AC-008): there is no ownership
-    check. Enqueues an outbound notification once implemented (US-007).
+    check. Only a field explicitly present in the request body is touched --
+    `{"owner_id": null}` clears the owner, an omitted `owner_id` leaves it as
+    it was -- so validation (AC-016, AC-018) runs, and nothing is written,
+    before any field changes. Enqueues `notify_task_saved` (US-007).
     """
     task = _get_task_or_404(db, id)
-    _validate_owner_exists(db, payload.assignee_id)
-    if payload.title is not None:
-        task.title = payload.title
-    if payload.description is not None:
-        task.description = payload.description
-    if payload.status is not None:
-        task.status = payload.status
-    if payload.assignee_id is not None:
-        task.assignee_id = payload.assignee_id
+    fields = payload.model_dump(exclude_unset=True)
+
+    if "owner_id" in fields:
+        _validate_owner_exists(db, fields["owner_id"])
+    if "status" in fields:
+        # `status` is not nullable on the model, so an explicit null is just
+        # as invalid as an unrecognised string -- _validate_status rejects
+        # both, since None is never a member of TASK_STATUSES.
+        _validate_status(fields["status"])
+    if "title" in fields:
+        fields["title"] = _validate_title(fields["title"])
+
+    if "title" in fields:
+        task.title = fields["title"]
+    if "description" in fields:
+        task.description = fields["description"]
+    if "status" in fields:
+        task.status = fields["status"]
+    if "owner_id" in fields:
+        task.assignee_id = fields["owner_id"]
+    if "due_date" in fields:
+        task.due_date = fields["due_date"]
+
     task.updated_at = datetime.now(UTC)
     db.add(task)
     db.commit()
     db.refresh(task)
-    return TaskOut.model_validate(task)
+    notify_task_saved.delay(task.id)
+    return _task_out(db, task)
 
 
-@router.get("/tasks/{id}/comments", response_model=StubResponse, dependencies=_auth, tags=["tasks"])
-async def list_comments(id: str) -> StubResponse:
-    """-> [{comment}]. JWT required."""
-    return _stub(f"GET /tasks/{id}/comments")
+@router.get("/tasks/{id}/comments", response_model=list[CommentOut], tags=["tasks"])
+async def list_comments(
+    id: str,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> list[CommentOut]:
+    """-> [{comment}]. JWT required, 404 for an unknown task. AC-025: chronological."""
+    _get_task_or_404(db, id)
+    comments = (
+        db.query(Comment).filter(Comment.task_id == id).order_by(Comment.created_at.asc()).all()
+    )
+    return [_comment_out(db, comment) for comment in comments]
 
 
 @router.post(
-    "/tasks/{id}/comments", response_model=StubResponse, dependencies=_auth, tags=["tasks"]
+    "/tasks/{id}/comments",
+    response_model=CommentOut,
+    status_code=status.HTTP_201_CREATED,
+    tags=["tasks"],
 )
-async def create_comment(id: str) -> StubResponse:
-    """{body} -> {comment}. JWT required."""
-    return _stub(f"POST /tasks/{id}/comments")
+async def create_comment(
+    id: str,
+    payload: CommentCreate,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> CommentOut:
+    """{body} -> {comment}. JWT required, 404 for an unknown task.
+
+    AC-026: an empty or whitespace-only body is 422 and creates nothing.
+    """
+    _get_task_or_404(db, id)
+    if not payload.body or not payload.body.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Comment body is required",
+        )
+    comment = Comment(task_id=id, author_id=current_user.id, body=payload.body.strip())
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return _comment_out(db, comment, author=current_user)
 
 
 @router.post(
-    "/tasks/{id}/checklist", response_model=StubResponse, dependencies=_auth, tags=["tasks"]
+    "/tasks/{id}/checklist",
+    response_model=ChecklistItemOut,
+    status_code=status.HTTP_201_CREATED,
+    tags=["tasks"],
 )
-async def add_checklist_item(id: str) -> StubResponse:
-    """{title} -> {checklist_item}. JWT required."""
-    return _stub(f"POST /tasks/{id}/checklist")
+async def add_checklist_item(
+    id: str,
+    payload: ChecklistItemCreate,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> ChecklistItemOut:
+    """{title} -> {checklist_item}. JWT required, 404 for an unknown task.
+
+    AC-027: starts incomplete.
+    """
+    _get_task_or_404(db, id)
+    title = payload.title.strip() if payload.title else ""
+    if not title:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Checklist item title is required",
+        )
+    position = db.query(func.count(ChecklistItem.id)).filter(ChecklistItem.task_id == id).scalar()
+    item = ChecklistItem(task_id=id, title=title, is_complete=False, position=position or 0)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return ChecklistItemOut.model_validate(item)
 
 
-@router.patch("/checklist/{id}", response_model=StubResponse, dependencies=_auth, tags=["tasks"])
-async def toggle_checklist_item(id: str) -> StubResponse:
-    """{is_complete} -> {checklist_item}. JWT required."""
-    return _stub(f"PATCH /checklist/{id}")
+@router.patch("/checklist/{id}", response_model=ChecklistItemOut, tags=["tasks"])
+async def toggle_checklist_item(
+    id: str,
+    payload: ChecklistItemUpdate,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> ChecklistItemOut:
+    """{is_complete} -> {checklist_item}. JWT required, 404 for an unknown item.
+
+    AC-028: persists and is reflected in the task detail's done/total counts.
+    """
+    item = db.get(ChecklistItem, id)
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Checklist item not found"
+        )
+    item.is_complete = payload.is_complete
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return ChecklistItemOut.model_validate(item)
 
 
 # ---- labels -------------------------------------------------------------------
-@router.get("/labels", response_model=StubResponse, dependencies=_auth, tags=["labels"])
-async def list_labels() -> StubResponse:
+@router.get("/labels", response_model=list[LabelOut], tags=["labels"])
+async def list_labels(
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> list[LabelOut]:
     """-> [{label}]. JWT required."""
-    return _stub("GET /labels")
+    labels = db.query(Label).order_by(Label.name.asc()).all()
+    return [LabelOut.model_validate(label) for label in labels]
 
 
-@router.post("/tasks/{id}/labels", response_model=StubResponse, dependencies=_auth, tags=["labels"])
-async def apply_label(id: str) -> StubResponse:
-    """{label_id} -> {task_labels}. JWT required."""
-    return _stub(f"POST /tasks/{id}/labels")
+@router.post(
+    "/tasks/{id}/labels",
+    response_model=TaskLabelOut,
+    status_code=status.HTTP_201_CREATED,
+    tags=["labels"],
+)
+async def apply_label(
+    id: str,
+    payload: TaskLabelCreate,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> TaskLabelOut:
+    """{label_id} -> {task_labels}. JWT required, 404 for an unknown task or label.
+
+    AC-029: applying a label already on the task is a no-op, not a duplicate row.
+    """
+    _get_task_or_404(db, id)
+    label = db.get(Label, payload.label_id)
+    if label is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found")
+
+    existing = db.get(TaskLabel, (id, payload.label_id))
+    if existing is None:
+        db.add(TaskLabel(task_id=id, label_id=payload.label_id))
+        db.commit()
+    return TaskLabelOut(task_id=id, label_id=payload.label_id)
 
 
 @router.delete(
     "/tasks/{id}/labels/{label_id}",
     response_model=None,
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=_auth,
     tags=["labels"],
 )
-async def remove_label(id: str, label_id: str) -> Response:
-    """204, no body. JWT required."""
+async def remove_label(
+    id: str,
+    label_id: str,
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    """204, no body. JWT required, 404 for an unknown task or label (AC-030)."""
+    _get_task_or_404(db, id)
+    label = db.get(Label, label_id)
+    if label is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found")
+
+    db.query(TaskLabel).filter(TaskLabel.task_id == id, TaskLabel.label_id == label_id).delete()
+    db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ---- notifications --------------------------------------------------------------
-@router.get(
-    "/notifications", response_model=StubResponse, dependencies=_auth, tags=["notifications"]
-)
-async def list_notifications() -> StubResponse:
-    """-> [{notification}]. JWT required."""
-    return _stub("GET /notifications")
+@router.get("/notifications", response_model=list[NotificationOut], tags=["notifications"])
+async def list_notifications(
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> list[NotificationOut]:
+    """-> [{notification}]. JWT required; only the signed-in member's own rows."""
+    notifications = (
+        db.query(Notification)
+        .filter(Notification.user_id == current_user.id)
+        .order_by(Notification.created_at.desc())
+        .all()
+    )
+    return [NotificationOut.model_validate(n) for n in notifications]
