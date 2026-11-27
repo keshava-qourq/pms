@@ -8,8 +8,14 @@ exactly as before, for both the happy path and the error paths.
 
 import secrets
 
+from fastapi.testclient import TestClient
 
-def test_tc018_auth_session_endpoint_confirms_user_identity_after_sign_in(client):
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_tc018_auth_session_endpoint_confirms_user_identity_after_sign_in():
     """TC-018: login then GET /auth/me confirms the full auth flow still works."""
 
     email = "alice@example.com"
@@ -39,7 +45,7 @@ def test_tc018_auth_session_endpoint_confirms_user_identity_after_sign_in(client
     assert me_resp.json()["email"] == email
 
 
-def test_tc020_login_validation_error_returned_correctly_for_missing_password(client):
+def test_tc020_login_validation_error_returned_correctly_for_missing_password():
     """TC-020: POST /auth/login without a password returns a validation error."""
 
     # Step 1: call POST /auth/login with only an email, no password.
@@ -54,7 +60,7 @@ def test_tc020_login_validation_error_returned_correctly_for_missing_password(cl
     assert "password" in str(body).lower()
 
 
-def test_tc023_login_succeeds_with_valid_credentials(client):
+def test_tc023_login_succeeds_with_valid_credentials():
     """TC-023: login with correct credentials returns 200 and a JWT token."""
 
     email = "bob@example.com"
@@ -76,7 +82,7 @@ def test_tc023_login_succeeds_with_valid_credentials(client):
     assert login_resp.json()["token"]
 
 
-def test_tc024_login_fails_with_invalid_credentials(client):
+def test_tc024_login_fails_with_invalid_credentials():
     """TC-024: login with an incorrect password returns 401."""
 
     email = "carol@example.com"

@@ -10,9 +10,9 @@ can see or edit. Schema changes go through the Alembic migration in
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -71,7 +71,12 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="todo")
-    assignee_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # Migration 0004 renamed the `tasks` column from `assignee_id` to `owner_id` and
+    # added `due_date`. The attribute keeps its old name here because app/schemas.py
+    # (the API spec's generated models) still exposes the field as `assignee_id`;
+    # only the underlying column name changed.
+    assignee_id: Mapped[str | None] = mapped_column("owner_id", String(36), nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
