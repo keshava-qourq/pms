@@ -3,15 +3,11 @@
 > Maintained by QuorQ AI SDLC. Text between `sdlc:auto` markers is regenerated; anything outside them is yours and is kept.
 
 <!-- sdlc:auto:start narrative -->
-### TEST-RUN-CHECKS · draft · source: testing:run_checks
+### TEST-E2E-2026-11-27 · draft · source: testing:E2E run
 
-Automated check run failed: 3 of 4 checks passed.
+_2026-11-27_
 
-run_checks (ticket=None): status=failed, detail='3/4 checks passed'. No ticket association given.
+Latest end-to-end test run against the sandbox target failed, reporting 0 of 0 tests passed.
 
-### TEST-E2E-LATEST · draft · source: testing:e2e
-
-Latest end-to-end run failed with 0/0 tests passed, against the sandbox target.
-
-Latest E2E run: status=failed, 0/0 passed, target=sandbox. 0/0 suggests no tests executed or collected in this run; input does not clarify further.
+Run result: failed. Tests passed: 0/0 (no tests appear to have executed or been collected). Target environment: sandbox. No further information was provided about which test suite was run, why it failed, which tickets or requirements it covered, or any remediation taken.
 <!-- sdlc:auto:end narrative -->

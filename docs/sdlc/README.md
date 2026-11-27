@@ -5,7 +5,7 @@
 <!-- sdlc:auto:start overview -->
 project management system
 
-**Documentation version:** v12
+**Documentation version:** v13
 <!-- sdlc:auto:end overview -->
 
 ## Contents
@@ -16,8 +16,8 @@ project management system
 | [Requirements](requirements/README.md) | v3 approved |
 | [Architecture](architecture/README.md) | 17 entries |
 | [Planning](planning/README.md) | 9 entries |
-| [Development](development/README.md) | 5 entries |
-| [Testing](testing/README.md) | 2 entries |
+| [Development](development/README.md) | 0 entries |
+| [Testing](testing/README.md) | 1 entry |
 | [Deployment](deployment/README.md) | 0 entries |
 | [Maintenance](maintenance/README.md) | 0 entries |
 | [Data model](architecture/data-model.md) | generated |
@@ -32,7 +32,7 @@ project management system
 | [Runbook](deployment/runbook.md) | not deployed yet |
 | [Release notes](deployment/release-notes.md) | 0 releases |
 | [Traceability matrix](traceability-matrix.md) | 18 requirements |
-| [Changelog](CHANGELOG.md) | 12 versions |
+| [Changelog](CHANGELOG.md) | 13 versions |
 <!-- sdlc:auto:end contents -->
 
 ## Open gaps

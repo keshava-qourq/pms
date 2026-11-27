@@ -5,19 +5,25 @@
 <!-- sdlc:auto:start sprints -->
 ## Sprint 1: Sprint 1
 
-Deliver core authentication and admin invite flow with flat, equal access controls.
+Stand up authentication, invitations, and flat equal-access permissions
 
 Capacity: 20 points · Committed: 19
 
 | Key | Type | Title | Points | Role | Depends on |
 |---|---|---|---|---|---|
 | US-001 | Story | Sign in with email and password | 8 | backend-agent | — |
+| ↳ US-001-T1 | Task | Implement POST /auth/login and GET /auth/me with credential verification | — | backend-agent | — |
+| ↳ US-001-T2 | Task | Add session/token issuance and validation middleware | — | backend-agent | — |
+| ↳ US-001-T3 | Task | Build sign-in form and authenticated route guard | — | frontend-agent | — |
 | US-002 | Story | Admin invites team members by email | 8 | backend-agent | US-001 |
+| ↳ US-002-T1 | Task | Implement POST /invitations with admin-only authorization and duplicate-email check | — | backend-agent | — |
+| ↳ US-002-T2 | Task | Implement POST /auth/accept-invite account creation flow | — | backend-agent | — |
+| ↳ US-002-T3 | Task | Wire invite email delivery through Redis queue and SendGrid | — | integration-agent | — |
 | US-003 | Story | Equal access to all projects and tasks | 3 | backend-agent | US-001 |
 
 ## Sprint 2: Sprint 2
 
-Deliver project management, project dashboard, task creation and status workflow, and start the monochrome restyle.
+Deliver project management, the projects dashboard, and task creation/editing
 
 Capacity: 20 points · Committed: 20
 
@@ -31,16 +37,16 @@ Capacity: 20 points · Committed: 20
 
 ## Sprint 3: Sprint 3
 
-Deliver the Kanban board and task list views plus task collaboration: comments, checklists and labels.
+Ship interchangeable Kanban/list task views plus comments, checklists, and labels
 
 Capacity: 20 points · Committed: 20
 
 | Key | Type | Title | Points | Role | Depends on |
 |---|---|---|---|---|---|
 | US-008 | Story | Kanban board view of tasks | 8 | frontend-agent | US-006, US-007 |
-| ↳ US-008-T1 | Task | Implement Kanban columns grouped by task status | — | frontend-agent | — |
-| ↳ US-008-T2 | Task | Implement drag-and-drop status update | — | frontend-agent | — |
-| ↳ US-008-T3 | Task | Sync board state with other task views | — | frontend-agent | — |
+| ↳ US-008-T1 | Task | Build Kanban board grouped into status columns | — | frontend-agent | — |
+| ↳ US-008-T2 | Task | Implement drag-and-drop status updates calling PATCH /tasks/{id} | — | frontend-agent | — |
+| ↳ US-008-T3 | Task | Keep board state in sync with shared task data | — | frontend-agent | — |
 | US-009 | Story | Task list view | 3 | frontend-agent | US-006 |
 | US-010 | Story | Comment on a task | 3 | backend-agent | US-006 |
 | US-011 | Story | Checklists and subtasks on a task | 3 | backend-agent | US-006 |
@@ -48,17 +54,17 @@ Capacity: 20 points · Committed: 20
 
 ## Sprint 4: Sprint 4
 
-Complete the monochrome theme rollout across remaining screens and verify with visual regression and accessibility QA.
+Apply the monochrome theme across all screens, remove redundant sign-in copy, and verify with a visual/accessibility QA pass
 
 Capacity: 20 points · Committed: 11
 
 | Key | Type | Title | Points | Role | Depends on |
 |---|---|---|---|---|---|
+| US-018 | Story | Remove descriptive paragraph from sign-in form | 1 | frontend-agent | US-013 |
 | US-014 | Story | Monochrome theme for projects dashboard and project screens | 3 | frontend-agent | US-004, US-005 |
 | US-015 | Story | Monochrome theme for task creation and editing screens | 2 | frontend-agent | US-006, US-007 |
 | US-016 | Story | Monochrome theme and status distinction for the Kanban board | 3 | frontend-agent | US-008 |
-| US-017 | Story | Visual regression and accessibility check for the new monochrome theme | 2 | qa-agent | US-013, US-014, US-015, US-016 |
-| US-018 | Story | Remove descriptive paragraph from sign-in form | 1 | frontend-agent | — |
+| US-017 | Story | Visual regression and accessibility check for the new monochrome theme | 2 | qa-agent | US-013, US-014, US-015, US-016, US-018 |
 
 ## Unscheduled
 

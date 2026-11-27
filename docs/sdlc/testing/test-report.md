@@ -5,22 +5,40 @@
 <!-- sdlc:auto:start e2e -->
 **Status:** failed
 **Target:** sandbox
-**Date:** 2026-11-11
+**Date:** 2026-11-12
 
 Passed: — · Failed: — · Skipped: — · Flaky: — · Total: —
 <!-- sdlc:auto:end e2e -->
 
 <!-- sdlc:auto:start unit -->
-**Coverage:** backend — · frontend 86.3%
+**Coverage:** —
 
-**Test cases:** 208 / 327 written
+**Test cases:** — / — written
 
-**Lines written:** 2466
+**Lines written:** —
 
-**Files deferred:** 0
+**Files deferred:** —
 <!-- sdlc:auto:end unit -->
 
 <!-- sdlc:auto:start dev-checks -->
+### Sprint —
+
+_No test steps recorded._
+
+### Sprint 4
+
+| Step | Status | Ticket | Finished |
+|---|---|---|---|
+| write_tests | succeeded | US-014 | 2026-11-26 |
+| write_tests | succeeded | US-015 | 2026-11-26 |
+| write_tests | succeeded | US-016 | 2026-11-26 |
+| write_tests | succeeded | US-017 | 2026-11-26 |
+| write_tests | succeeded | US-018 | 2026-11-26 |
+
+### Sprint 4
+
+_No test steps recorded._
+
 ### Sprint 3
 
 | Step | Status | Ticket | Finished |
