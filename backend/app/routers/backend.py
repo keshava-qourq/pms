@@ -86,6 +86,15 @@ def _get_task_or_404(db: Session, id: str) -> Task:
     return task
 
 
+def _validate_owner_exists(db: Session, owner_id: str | None) -> None:
+    """AC-016: an unknown owner id on create or patch is 422, task unchanged."""
+    if owner_id is not None and db.get(User, owner_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unknown owner id",
+        )
+
+
 # ---- auth ------------------------------------------------------------------
 @router.post("/auth/login", response_model=LoginResponse, tags=["auth"])
 async def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:  # noqa: B008
@@ -314,6 +323,7 @@ async def create_task(
     shared Celery instance.
     """
     _get_project_or_404(db, id)
+    _validate_owner_exists(db, payload.assignee_id)
     task = Task(
         project_id=id,
         title=payload.title,
@@ -353,6 +363,7 @@ async def update_task(
     check. Enqueues an outbound notification once implemented (US-007).
     """
     task = _get_task_or_404(db, id)
+    _validate_owner_exists(db, payload.assignee_id)
     if payload.title is not None:
         task.title = payload.title
     if payload.description is not None:
